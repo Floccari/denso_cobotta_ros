@@ -27,8 +27,8 @@
 #include <cerrno>
 
 // ROS
-#include <ros/ros.h>
-#include <std_msgs/Int32.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/int32.hpp>
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/joint_state_interface.h>
 #include <hardware_interface/robot_hw.h>

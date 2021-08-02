@@ -16,7 +16,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
+#include <cstring>
 #include "denso_cobotta_lib/driver.h"
 #include "denso_cobotta_lib/cobotta_ioctl.h"
 #include "denso_cobotta_lib/cobotta_common.h"
@@ -42,7 +44,7 @@ Driver::Driver(const std::shared_ptr<Cobotta>& parent)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-int Driver::openDeviceFile() throw(CobottaException, std::runtime_error)
+int Driver::openDeviceFile()
 {
   int fd;
   int myerrno;
@@ -125,13 +127,14 @@ bool Driver::isTargetVersion() const
  */
 void Driver::printVersion() const
 {
-  ROS_INFO("%s: Linux driver: %d.%d.%d-%d (Requirements: %d.%d.N-M)", TAG, this->getVersion().driver_major,
-           this->getVersion().driver_minor, this->getVersion().driver_revision, this->getVersion().driver_build,
-           cobotta_common::DRIVER_VERSION_MAJOR, cobotta_common::DRIVER_VERSION_MINOR);
-  ROS_INFO("%s: FPGA MAIN: %s", TAG, this->getVersion().fpga_main.c_str());
-  ROS_INFO("%s: FPGA MAIN backup: %s", TAG, this->getVersion().fpga_main_backup.c_str());
-  ROS_INFO("%s: ServoMCU: %s", TAG, this->getVersion().mcu.c_str());
-  ROS_INFO("%s: SafetyMCU: %s", TAG, this->getVersion().safety_mcu.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: Linux driver: %d.%d.%d-%d (Requirements: %d.%d.N-M)", TAG,
+	      this->getVersion().driver_major,
+	      this->getVersion().driver_minor, this->getVersion().driver_revision, this->getVersion().driver_build,
+	      cobotta_common::DRIVER_VERSION_MAJOR, cobotta_common::DRIVER_VERSION_MINOR);
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: FPGA MAIN: %s", TAG, this->getVersion().fpga_main.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: FPGA MAIN backup: %s", TAG, this->getVersion().fpga_main_backup.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: ServoMCU: %s", TAG, this->getVersion().mcu.c_str());
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: SafetyMCU: %s", TAG, this->getVersion().safety_mcu.c_str());
 }
 
 /**
@@ -144,7 +147,7 @@ void Driver::printVersion() const
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Driver::clearError() throw(CobottaException, std::runtime_error)
+void Driver::clearError()
 {
   if (isFatalError() || parent_->getSafetyMcu()->isFatalError())
   {
@@ -153,7 +156,7 @@ void Driver::clearError() throw(CobottaException, std::runtime_error)
   }
   if (!this->isError())
   {
-    ROS_INFO("%s: No robot error.", TAG);
+      RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: No robot error.", TAG);
     return;
   }
 
@@ -162,7 +165,8 @@ void Driver::clearError() throw(CobottaException, std::runtime_error)
   {
     while (this->getStateQueueSize(i))
     {
-      ros::Duration(cobotta_common::getPeriod()).sleep();
+      rclcpp::Rate rate(cobotta_common::getPeriodStd());
+      rate.sleep();
     }
   }
 
@@ -173,9 +177,10 @@ void Driver::clearError() throw(CobottaException, std::runtime_error)
     if (this->isFatalError())
       throw CobottaException(0x854000F0); /* Fatal error occurred. */
 
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+    rclcpp::Rate rate(cobotta_common::getPeriodStd());
+    rate.sleep();
   }
-  ROS_INFO("%s: ...Clearing error has done.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "%s: ...Clearing error has done.", TAG);
 }
 
 /**
@@ -189,7 +194,7 @@ void Driver::clearError() throw(CobottaException, std::runtime_error)
  * @exception RuntimeError An other error
  * @exception InvalidArgument arm_no is invalid.
  */
-StateCode Driver::dequeue(long arm_no) throw(CobottaException, std::runtime_error, std::invalid_argument)
+StateCode Driver::dequeue(long arm_no)
 {
   Driver::checkArmNo(arm_no);
   return Driver::readHwQueue(parent_->getFd(), arm_no);
@@ -204,7 +209,7 @@ StateCode Driver::dequeue(long arm_no) throw(CobottaException, std::runtime_erro
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-DriverStateInfo Driver::receiveAllState() throw(CobottaException, std::runtime_error)
+DriverStateInfo Driver::receiveAllState()
 {
   return Driver::readHwState(parent_->getFd());
 }
@@ -219,7 +224,7 @@ DriverStateInfo Driver::receiveAllState() throw(CobottaException, std::runtime_e
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-DriverVersion Driver::readHwVersion(int fd) throw(CobottaException, std::runtime_error)
+DriverVersion Driver::readHwVersion(int fd)
 {
   int ret;
   int myerrno;
@@ -265,7 +270,7 @@ DriverVersion Driver::readHwVersion(int fd) throw(CobottaException, std::runtime
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Driver::writeHwClear(int fd) throw(CobottaException, std::runtime_error)
+void Driver::writeHwClear(int fd)
 {
   int ret;
   int myerrno;
@@ -274,7 +279,7 @@ void Driver::writeHwClear(int fd) throw(CobottaException, std::runtime_error)
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_CLR_ERROR, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_CLR_ERROR ret=%d errno=%d result=%lX", TAG, ret, myerrno, dat.result);
+  RCLCPP_DEBUG(rclcpp::get_logger("driver_logger"), "%s: COBOTTA_IOCTL_CLR_ERROR ret=%d errno=%d result=%lX", TAG, ret, myerrno, dat.result);
   if (ret)
   {
     if (myerrno == ECANCELED)
@@ -292,7 +297,7 @@ void Driver::writeHwClear(int fd) throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-StateCode Driver::readHwQueue(int fd, long arm_no) throw(CobottaException, std::runtime_error)
+StateCode Driver::readHwQueue(int fd, long arm_no)
 {
   int ret;
   int myerrno;
@@ -323,7 +328,7 @@ StateCode Driver::readHwQueue(int fd, long arm_no) throw(CobottaException, std::
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-DriverStateInfo Driver::readHwState(int fd) throw(CobottaException, std::runtime_error)
+DriverStateInfo Driver::readHwState(int fd)
 {
   int ret;
   int myerrno;
@@ -383,8 +388,7 @@ DriverStateInfo Driver::readHwState(int fd) throw(CobottaException, std::runtime
  * @exception RuntimeError An other error
  */
 void Driver::writeHwAcyclicCommAll(int fd, uint16_t address, std::array<uint16_t, JOINT_MAX + 1> send_values,
-                                   std::array<uint16_t, JOINT_MAX + 1>& recv_values) throw(CobottaException,
-                                                                                           std::runtime_error)
+                                   std::array<uint16_t, JOINT_MAX + 1>& recv_values)
 {
   int ret;
   int myerrno;
@@ -423,7 +427,7 @@ void Driver::writeHwAcyclicCommAll(int fd, uint16_t address, std::array<uint16_t
  * @exception RuntimeError An other error
  */
 void Driver::writeHwAcyclicComm(int fd, long arm_no, long joint_no, uint16_t address, uint16_t send_value,
-                                uint16_t& recv_value) throw(CobottaException, std::invalid_argument, std::runtime_error)
+                                uint16_t& recv_value)
 {
   int ret;
   int myerrno;
@@ -457,7 +461,7 @@ void Driver::writeHwAcyclicComm(int fd, long arm_no, long joint_no, uint16_t add
  * @param fd file descriptor
  * @exception RuntimeError An other error
  */
-struct DriverCommandInfo Driver::writeHwUpdate(int fd, const SRV_COMM_SEND& send_data) throw(std::runtime_error)
+struct DriverCommandInfo Driver::writeHwUpdate(int fd, const SRV_COMM_SEND& send_data)
 {
   IOCTL_DATA_UPDATE dat{ 0 };
   DriverCommandInfo info;
@@ -482,8 +486,7 @@ struct DriverCommandInfo Driver::writeHwUpdate(int fd, const SRV_COMM_SEND& send
   return info;
 }
 
-SRV_COMM_RECV Driver::readHwEncoder(int fd, long arm_no) throw(CobottaException, std::runtime_error,
-                                                               std::invalid_argument)
+SRV_COMM_RECV Driver::readHwEncoder(int fd, long arm_no)
 {
   IOCTL_DATA_GETENC dat{ 0 };
   dat.arm_no = arm_no;
@@ -506,13 +509,13 @@ SRV_COMM_RECV Driver::readHwEncoder(int fd, long arm_no) throw(CobottaException,
   return dat.recv;
 }
 
-uint32_t Driver::getStateQueueSize(long arm_no) const throw(std::invalid_argument)
+uint32_t Driver::getStateQueueSize(long arm_no) const
 {
   Driver::checkArmNo(arm_no);
   return queue_size_[arm_no];
 }
 
-void Driver::checkArmNo(long arm_no) throw(std::invalid_argument)
+void Driver::checkArmNo(long arm_no)
 {
   if (arm_no < 0 || arm_no > ARM_MAX)
   {
@@ -520,7 +523,7 @@ void Driver::checkArmNo(long arm_no) throw(std::invalid_argument)
                                 std::to_string(ARM_MAX) + ").");
   }
 }
-void Driver::checkJointNo(long joint_no) throw(std::invalid_argument)
+void Driver::checkJointNo(long joint_no)
 {
   if (joint_no < 0 || joint_no > JOINT_MAX)
   {

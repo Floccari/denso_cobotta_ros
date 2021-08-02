@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <signal.h>
 #include <fstream>
+#include <unistd.h>
 
 #include <yaml-cpp/yaml.h>
 #include "denso_cobotta_driver/denso_cobotta_driver.h"
@@ -36,14 +37,14 @@ void signalHandler(int sig)
     denso_cobotta_lib::cobotta::Motor::sendStop(fd);
     close(fd);
   }
-  ROS_INFO("DensoCobotttaDriver has stopped.");
-  ros::shutdown();
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "DensoCobotttaDriver has stopped.");
+  rclcpp::shutdown();
 }
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "denso_cobotta_driver");
-  ros::NodeHandle nh;
+  rclcpp::init(argc, argv);
+  auto nh = rclcpp::Node::make_shared("denso_cobotta_driver");
 
   /*
    * Initialize
@@ -52,10 +53,10 @@ int main(int argc, char** argv)
   bool ret = driver.initialize(nh);
   if (!ret)
   {
-    ROS_ERROR_STREAM("Failed to initialize COBOTTA device driver.");
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), "Failed to initialize COBOTTA device driver.");
     return 1;
   }
-  ROS_INFO_STREAM("Finish to initialize COBOTTA device driver.");
+  RCLCPP_INFO_STREAM(rclcpp::get_logger("driver_logger"), "Finish to initialize COBOTTA device driver.");
 
   /* for Ctrl+C */
   signal(SIGINT, signalHandler);
@@ -64,8 +65,8 @@ int main(int argc, char** argv)
    * Updating state on another thread
    */
   std::thread update_thread([&driver]() {
-    ros::Rate rate(1.0 / cobotta_common::DRIVER_UPDATE_PERIOD);
-    while (ros::ok())
+    rclcpp::Rate rate(1.0 / cobotta_common::DRIVER_UPDATE_PERIOD);
+    while (rclcpp::ok())
     {
       driver.update();
       rate.sleep();
@@ -76,9 +77,9 @@ int main(int argc, char** argv)
    * main thread
    */
   driver.start();
-  ros::spin();
+  rclcpp::spin(nh);
   driver.stop();
-  ros::shutdown();
+  rclcpp::shutdown();
   update_thread.join();
   driver.terminate();
 
@@ -100,7 +101,7 @@ DensoCobottaDriver::DensoCobottaDriver()
  * @return true success to initialize
  * @return false failed to initialize
  */
-bool DensoCobottaDriver::initialize(ros::NodeHandle& nh)
+bool DensoCobottaDriver::initialize(rclcpp::Node::SharedPtr nh)
 {
   try
   {
@@ -110,30 +111,69 @@ bool DensoCobottaDriver::initialize(ros::NodeHandle& nh)
     cobotta_->getLed()->forceChange(static_cast<uint32_t>(LedColorTable::White));
 
     // Service server
-    sv_set_motor_ = nh.advertiseService("set_motor_state", &DensoCobottaDriver::setMotorStateSv, this);
-    sv_get_motor_ = nh.advertiseService("get_motor_state", &DensoCobottaDriver::getMotorStateSv, this);
-    sv_set_brake_ = nh.advertiseService("set_brake_state", &DensoCobottaDriver::setBrakeStateSv, this);
-    sv_get_brake_ = nh.advertiseService("get_brake_state", &DensoCobottaDriver::getBrakeStateSv, this);
+    sv_set_motor_ = nh->create_service<denso_cobotta_interfaces::srv::SetMotorState>("set_motor_state",
+										     std::bind(&DensoCobottaDriver::setMotorStateSv,
+											       this,
+											       std::placeholders::_1,
+											       std::placeholders::_2));
+    sv_get_motor_ = nh->create_service<denso_cobotta_interfaces::srv::GetMotorState>("get_motor_state",
+										     std::bind(&DensoCobottaDriver::getMotorStateSv,
+											       this,
+											       std::placeholders::_1,
+											       std::placeholders::_2));
+    sv_set_brake_ = nh->create_service<denso_cobotta_interfaces::srv::SetBrakeState>("set_brake_state",
+										     std::bind(&DensoCobottaDriver::setBrakeStateSv,
+										     this,
+										     std::placeholders::_1,
+										     std::placeholders::_2));
+    sv_get_brake_ = nh->create_service<denso_cobotta_interfaces::srv::GetBrakeState>("get_brake_state",
+										   std::bind(&DensoCobottaDriver::getBrakeStateSv,
+											     this,
+											     std::placeholders::_1,
+											     std::placeholders::_2));
     if (activateCalset(nh))
     {
-      sv_exec_calset_ = nh.advertiseService("exec_calset", &DensoCobottaDriver::execCalsetSv, this);
+	sv_exec_calset_ = nh->create_service<denso_cobotta_interfaces::srv::ExecCalset>("exec_calset",
+											std::bind(&DensoCobottaDriver::execCalsetSv,
+												  this,
+												  std::placeholders::_1,
+												  std::placeholders::_2));
     }
-    sv_clear_error_ = nh.advertiseService("clear_error", &DensoCobottaDriver::clearErrorSv, this);
-    sv_clear_robot_error_ = nh.advertiseService("clear_robot_error", &DensoCobottaDriver::clearRobotErrorSv, this);
-    sv_clear_safe_state_ = nh.advertiseService("clear_safe_state", &DensoCobottaDriver::clearSafeStateSv, this);
-    sv_set_led_ = nh.advertiseService("set_LED_state", &DensoCobottaDriver::setLedStateSv, this);
-
+    sv_clear_error_ = nh->create_service<denso_cobotta_interfaces::srv::ClearError>("clear_error",
+										    std::bind(&DensoCobottaDriver::clearErrorSv,
+											      this,
+											      std::placeholders::_1,
+											      std::placeholders::_2));
+    sv_clear_robot_error_ = nh->create_service<denso_cobotta_interfaces::srv::ClearRobotError>("clear_robot_error",
+											       std::bind(&DensoCobottaDriver::clearRobotErrorSv,
+													 this,
+													 std::placeholders::_1,
+													 std::placeholders::_2));
+    sv_clear_safe_state_ = nh->create_service<denso_cobotta_interfaces::srv::ClearSafeState>("clear_safe_state",
+											     std::bind(&DensoCobottaDriver::clearSafeStateSv,
+												       this,
+												       std::placeholders::_1,
+												       std::placeholders::_2));
+    sv_set_led_ = nh->create_service<denso_cobotta_interfaces::srv::SetLEDState>("set_LED_state",
+										 std::bind(&DensoCobottaDriver::setLedStateSv,
+											   this,
+											   std::placeholders::_1,
+											   std::placeholders::_2));
+    
     // Publisher
-    pub_function_button_ = nh.advertise<std_msgs::Bool>("function_button", 1);
-    pub_plus_button_ = nh.advertise<std_msgs::Bool>("plus_button", 1);
-    pub_minus_button_ = nh.advertise<std_msgs::Bool>("minus_button", 1);
-    pub_mini_io_input_ = nh.advertise<std_msgs::UInt16>("miniIO_input", 1);
-    pub_robot_state_ = nh.advertise<denso_cobotta_driver::RobotState>("robot_state", 64);
-    pub_safe_state_ = nh.advertise<denso_cobotta_driver::SafeState>("safe_state", 64);
-    pub_gripper_state_ = nh.advertise<std_msgs::Bool>("gripper_state", 1);
+    pub_function_button_ = nh->create_publisher<std_msgs::msg::Bool>("function_button", 1);
+    pub_plus_button_ = nh->create_publisher<std_msgs::msg::Bool>("plus_button", 1);
+    pub_minus_button_ = nh->create_publisher<std_msgs::msg::Bool>("minus_button", 1);
+    pub_mini_io_input_ = nh->create_publisher<std_msgs::msg::UInt16>("miniIO_input", 1);
+    pub_robot_state_ = nh->create_publisher<denso_cobotta_interfaces::msg::RobotState>("robot_state", 64);
+    pub_safe_state_ = nh->create_publisher<denso_cobotta_interfaces::msg::SafeState>("safe_state", 64);
+    pub_gripper_state_ = nh->create_publisher<std_msgs::msg::Bool>("gripper_state", 1);
 
     // Subscriber
-    sub_mini_io_output_ = nh.subscribe("miniIO_output", 10, &DensoCobottaDriver::miniIoOutputCallback, this);
+    sub_mini_io_output_ = nh->create_subscription<std_msgs::msg::UInt16>("miniIO_output", rclcpp::QoS(10),
+									 std::bind(&DensoCobottaDriver::miniIoOutputCallback,
+										   this,
+										   std::placeholders::_1));
 
     PublishInfo info = this->getCobotta()->update();
     this->publish(false, info);
@@ -145,7 +185,7 @@ bool DensoCobottaDriver::initialize(ros::NodeHandle& nh)
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return false;
   }
 
@@ -193,7 +233,7 @@ void DensoCobottaDriver::start()
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return;
   }
 }
@@ -214,7 +254,7 @@ void DensoCobottaDriver::stop()
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return;
   }
 }
@@ -234,7 +274,7 @@ void DensoCobottaDriver::terminate()
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return;
   }
 }
@@ -262,16 +302,16 @@ void DensoCobottaDriver::update()
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM_THROTTLE(1, e.what());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
   }
 }
 
-bool DensoCobottaDriver::activateCalset(ros::NodeHandle& nh)
+bool DensoCobottaDriver::activateCalset(rclcpp::Node::SharedPtr nh)
 {
   bool enable_calset = false;
-  if (!nh.getParam("enable_calset", enable_calset))
+  if (!nh->get_parameter("enable_calset", enable_calset))
   {
-    ROS_WARN("Failed to get param 'enable_calset'.");
+    RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Failed to get param 'enable_calset'.");
     return false;
   }
 
@@ -283,7 +323,7 @@ bool DensoCobottaDriver::activateCalset(ros::NodeHandle& nh)
       return false;
     }
 
-    if (nh.getParam("rang_value", rang_value_))
+    if (nh->get_parameter("rang_value", rang_value_))
     {
       if (rang_value_.size() == CONTROL_JOINT_MAX)
       {
@@ -291,27 +331,27 @@ bool DensoCobottaDriver::activateCalset(ros::NodeHandle& nh)
       }
       else
       {
-        ROS_WARN("Invalid 'rang_value' length.");
+        RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Invalid 'rang_value' length.");
       }
     }
     else
     {
-      ROS_WARN("Failed to get param 'rang_value'.");
+      RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Failed to get param 'rang_value'.");
     }
   }
 
   return false;
 }
 
-bool DensoCobottaDriver::loadJointLimitsParams(ros::NodeHandle& nh)
+bool DensoCobottaDriver::loadJointLimitsParams(rclcpp::Node::SharedPtr nh)
 {
   double max_acceleration, max_velocity;
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
   {
-    if (!nh.getParam(std::string("joint_limits/joint_") + std::to_string(i + 1) + std::string("/max_acceleration"),
+    if (!nh->get_parameter(std::string("joint_limits/joint_") + std::to_string(i + 1) + std::string("/max_acceleration"),
                      max_acceleration))
     {
-      ROS_WARN("Failed to load max_acceleration(J%1d).", i + 1);
+      RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Failed to load max_acceleration(J%1d).", i + 1);
       return false;
     }
     max_acceleration_[i] = max_acceleration;
@@ -319,10 +359,10 @@ bool DensoCobottaDriver::loadJointLimitsParams(ros::NodeHandle& nh)
 
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
   {
-    if (!nh.getParam(std::string("joint_limits/joint_") + std::to_string(i + 1) + std::string("/max_velocity"),
+    if (!nh->get_parameter(std::string("joint_limits/joint_") + std::to_string(i + 1) + std::string("/max_velocity"),
                      max_velocity))
     {
-      ROS_WARN("Failed to load max_velocity(J%1d).", i + 1);
+      RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Failed to load max_velocity(J%1d).", i + 1);
       return false;
     }
     max_velocity_[i] = max_velocity;
@@ -335,7 +375,7 @@ bool DensoCobottaDriver::loadJointLimitsParams(ros::NodeHandle& nh)
  * Publish my state.
  * @param sync true:sync false:async(first)
  */
-void DensoCobottaDriver::publish(const bool sync, const PublishInfo info)
+void DensoCobottaDriver::publish(const bool sync, PublishInfo info)
 {
   bool lv4_error = false;
   bool lv5_error = false;
@@ -352,11 +392,11 @@ void DensoCobottaDriver::publish(const bool sync, const PublishInfo info)
         std::string tag = "robot#" + std::to_string(i);
         this->putRosLog(tag.c_str(), sc.main_code, sc.sub_code);
 
-        RobotState pub;
+	denso_cobotta_interfaces::msg::RobotState pub;
         pub.arm_no = i;
         pub.state_code = sc.main_code;
         pub.state_subcode = sc.sub_code;
-        this->pub_robot_state_.publish(pub);
+        this->pub_robot_state_->publish(pub);
 
         auto msg = Message::getMessageInfo(sc.main_code);
         if (msg.level >= 4)
@@ -369,10 +409,10 @@ void DensoCobottaDriver::publish(const bool sync, const PublishInfo info)
       struct StateCode sc = this->getCobotta()->getSafetyMcu()->dequeue();
       this->putRosLog("safety", sc.main_code, sc.sub_code);
 
-      SafeState pub;
+      denso_cobotta_interfaces::msg::SafeState pub;
       pub.state_code = sc.main_code;
       pub.state_subcode = sc.sub_code;
-      this->pub_safe_state_.publish(pub);
+      this->pub_safe_state_->publish(pub);
 
       auto msg = Message::getMessageInfo(sc.main_code);
       if (msg.level >= 4)
@@ -392,22 +432,22 @@ void DensoCobottaDriver::publish(const bool sync, const PublishInfo info)
       this->setForceClearFlag(true);
 
     /* other */
-    std_msgs::Bool function_button_state;
-    std_msgs::Bool plus_button_state;
-    std_msgs::Bool minus_button_state;
-    std_msgs::UInt16 mini_io_input;
-    std_msgs::Bool gripper_state;
+    std_msgs::msg::Bool function_button_state;
+    std_msgs::msg::Bool plus_button_state;
+    std_msgs::msg::Bool minus_button_state;
+    std_msgs::msg::UInt16 mini_io_input;
+    std_msgs::msg::Bool gripper_state;
 
     function_button_state.data = info.isFunctionButton();
-    this->pub_function_button_.publish(function_button_state);
+    this->pub_function_button_->publish(function_button_state);
     plus_button_state.data = info.isPlusButton();
-    this->pub_plus_button_.publish(plus_button_state);
+    this->pub_plus_button_->publish(plus_button_state);
     minus_button_state.data = info.isMinusButton();
-    this->pub_minus_button_.publish(minus_button_state);
+    this->pub_minus_button_->publish(minus_button_state);
     mini_io_input.data = info.getMiniIo();
-    this->pub_mini_io_input_.publish(mini_io_input);
+    this->pub_mini_io_input_->publish(mini_io_input);
     gripper_state.data = info.isGripperState();
-    this->pub_gripper_state_.publish(gripper_state);
+    this->pub_gripper_state_->publish(gripper_state);
   }
   catch (const CobottaException& e)
   {
@@ -416,7 +456,7 @@ void DensoCobottaDriver::publish(const bool sync, const PublishInfo info)
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return;
   }
 }
@@ -439,22 +479,22 @@ void DensoCobottaDriver::putRosLog(const char* tag, uint32_t main_code, uint32_t
   switch (message.getErrorLevel())
   {
     case 0:
-      ROS_INFO_STREAM(ss.str());
+      RCLCPP_INFO_STREAM(rclcpp::get_logger("driver_logger"), ss.str());
       break;
     case 1:
-      ROS_WARN_STREAM(ss.str());
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("driver_logger"), ss.str());
       break;
     case 2:
-      ROS_ERROR_STREAM(ss.str());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), ss.str());
       break;
     case 3:
-      ROS_ERROR_STREAM(ss.str());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), ss.str());
       break;
     case 4:
-      ROS_ERROR_STREAM(ss.str());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), ss.str());
       break;
     default:  // Level-5
-      ROS_FATAL_STREAM(ss.str());
+      RCLCPP_FATAL_STREAM(rclcpp::get_logger("driver_logger"), ss.str());
       break;
   }
 }
@@ -466,12 +506,13 @@ void DensoCobottaDriver::putRosLog(const char* tag, uint32_t main_code, uint32_t
  * @param res true:success false:failure
  * @return true
  */
-bool DensoCobottaDriver::setMotorStateSv(SetMotorState::Request& req, SetMotorState::Response& res)
+bool DensoCobottaDriver::setMotorStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::SetMotorState::Request> req,
+					 std::shared_ptr<denso_cobotta_interfaces::srv::SetMotorState::Response> res)
 {
-  res.success = true;
+  res->success = true;
   try
   {
-    if (req.state)
+    if (req->state)
     {
       cobotta_->getMotor()->start();
     }
@@ -483,12 +524,12 @@ bool DensoCobottaDriver::setMotorStateSv(SetMotorState::Request& req, SetMotorSt
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -499,25 +540,26 @@ bool DensoCobottaDriver::setMotorStateSv(SetMotorState::Request& req, SetMotorSt
  * @param res true:motor running false:motor stop
  * @return true
  */
-bool DensoCobottaDriver::getMotorStateSv(GetMotorState::Request& /* req */, GetMotorState::Response& res)
+bool DensoCobottaDriver::getMotorStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::GetMotorState::Request> req,
+					 std::shared_ptr<denso_cobotta_interfaces::srv::GetMotorState::Response> res)
 {
   bool motor_on;
-  res.success = true;
-  res.state = true;
+  res->success = true;
+  res->state = true;
 
   try
   {
-    res.state = cobotta_->getMotor()->isRunning();
+    res->state = cobotta_->getMotor()->isRunning();
   }
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -530,16 +572,17 @@ bool DensoCobottaDriver::getMotorStateSv(GetMotorState::Request& /* req */, GetM
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::setBrakeStateSv(SetBrakeState::Request& req, SetBrakeState::Response& res)
+bool DensoCobottaDriver::setBrakeStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::SetBrakeState::Request> req,
+					 std::shared_ptr<denso_cobotta_interfaces::srv::SetBrakeState::Response> res)
 {
-  res.success = true;
+  res->success = true;
 
-  if (req.state.size() != CONTROL_JOINT_MAX)
+  if (req->state.size() != CONTROL_JOINT_MAX)
   {
-    ROS_ERROR("Failed to run 'set_brake_state'. "
+    RCLCPP_ERROR(rclcpp::get_logger("driver_logger"), "Failed to run 'set_brake_state'. "
               "The nubmer of joint is invalid. (size=%ld)",
-              req.state.size());
-    res.success = false;
+              req->state.size());
+    res->success = false;
     return true;
   }
 
@@ -547,7 +590,7 @@ bool DensoCobottaDriver::setBrakeStateSv(SetBrakeState::Request& req, SetBrakeSt
   state.fill(SRV_BRAKE_NONE);
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
   {
-    if (req.state[i])
+    if (req->state[i])
     {
       state[i] = SRV_BRAKE_LOCK;
     }
@@ -564,12 +607,12 @@ bool DensoCobottaDriver::setBrakeStateSv(SetBrakeState::Request& req, SetBrakeSt
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -581,28 +624,29 @@ bool DensoCobottaDriver::setBrakeStateSv(SetBrakeState::Request& req, SetBrakeSt
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::getBrakeStateSv(GetBrakeState::Request& /* req */, GetBrakeState::Response& res)
+bool DensoCobottaDriver::getBrakeStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::GetBrakeState::Request> req,
+					 std::shared_ptr<denso_cobotta_interfaces::srv::GetBrakeState::Response> res)
 {
-  res.success = true;
+  res->success = true;
 
   try
   {
     auto state = cobotta_->getBrake()->getArmState(0);
-    res.state.resize(CONTROL_JOINT_MAX);
+    res->state.resize(CONTROL_JOINT_MAX);
     for (int i = 0; i < CONTROL_JOINT_MAX; i++)
     {
-      res.state[i] = state[i] == SRV_BRAKE_LOCK ? true : false;
+      res->state[i] = state[i] == SRV_BRAKE_LOCK ? true : false;
     }
   }
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -614,10 +658,11 @@ bool DensoCobottaDriver::getBrakeStateSv(GetBrakeState::Request& /* req */, GetB
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset::Response& res)
+bool DensoCobottaDriver::execCalsetSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ExecCalset::Request> req,
+				      std::shared_ptr<denso_cobotta_interfaces::srv::ExecCalset::Response> res)
 {
-  res.success = true;
-  static constexpr double process_wait_time = 0.02;
+  res->success = true;
+  rclcpp::Rate rate(std::chrono::milliseconds(20));
   static constexpr double delta_degree = 15;
 
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
@@ -625,24 +670,26 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
     double tmp_degree = std::abs(cobotta_common::CALSET_POSE[i] - rang_value_[i]);
     if (tmp_degree > delta_degree)
     {
-      ROS_ERROR("Rang value differs greatly from mechanical end(J%1d).", i + 1);
-      res.success = false;
+      RCLCPP_ERROR(rclcpp::get_logger("driver_logger"), "Rang value differs greatly from mechanical end(J%1d).", i + 1);
+      res->success = false;
       return true;
     }
   }
 
   auto motor = [&](bool on) {
-    SetMotorState::Request motor_req;
-    SetMotorState::Response motor_res;
+    denso_cobotta_interfaces::srv::SetMotorState::Request motor_req;
+    denso_cobotta_interfaces::srv::SetMotorState::Response motor_res;
     motor_req.state = on;
-    setMotorStateSv(motor_req, motor_res);
+    auto motor_req_ptr = std::make_shared<denso_cobotta_interfaces::srv::SetMotorState::Request>(motor_req);
+    auto motor_res_ptr = std::make_shared<denso_cobotta_interfaces::srv::SetMotorState::Response>(motor_res);
+    setMotorStateSv(motor_req_ptr, motor_res_ptr);
     return (bool)(motor_res.success);
   };
 
   auto failed_process = [&]() {
-    res.success = false;
+    res->success = false;
     motor(false);
-    ros::Duration(process_wait_time).sleep();  // Wait for stopping.
+    rate.sleep();  // Wait for stopping.
     setDeviationParameters(POSITION_DEVIATION_PARAMS);
   };
 
@@ -656,19 +703,19 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
   }
 
   motor(false);
-  ros::Duration(process_wait_time).sleep();       // Wait for stopping.
+  rate.sleep();       // Wait for stopping.
   if (!setDeviationParameters(deviation_params))  // Send parameters.
   {
     failed_process();
     return true;
   }
-  ros::Duration(process_wait_time).sleep();  // Wait for sending parameters.
+  rate.sleep();  // Wait for sending parameters.
   if (!motor(true))
   {
     failed_process();
     return true;
   }
-  ros::Duration(process_wait_time).sleep();  // Wait for starting.
+  rate.sleep();  // Wait for starting.
 
   // Move to start position.
   MoveParam move_param;
@@ -689,8 +736,9 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
     failed_process();
     return true;
   }
-  ros::Duration(0.1).sleep();  // Wait to finish moving.
-  ROS_INFO("Moving to the mechanical end .... Please wait for about 60 seconds.");
+  rclcpp::Rate rate2(std::chrono::milliseconds(100));
+  rate2.sleep();  // Wait to finish moving.
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "Moving to the mechanical end .... Please wait for about 60 seconds.");
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
   {
     double tmp_degree = cobotta_common::CALSET_POSE[i] > 0 ? cobotta_common::CALSET_POSE[i] + delta_degree :
@@ -704,13 +752,13 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
     failed_process();
     return true;
   }
-  ros::Duration(0.1).sleep();  // Wait to finish moving.
+  rate2.sleep();  // Wait to finish moving.
   // ++++++++++++++++++++↑End AutoCal↑++++++++++++++++++++
 
   std::array<int32_t, JOINT_MAX> cur_pulse;  // [pulse]
   recvPulse(0, cur_pulse);                   // Get current pulse.
   motor(false);
-  ros::Duration(process_wait_time).sleep();  // Wait for starting.
+  rate.sleep();  // Wait for starting.
 
   // Caluculate pulse offset to adjust current pulse.
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
@@ -718,7 +766,7 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
     pulse_offset[i] = ARM_COEFF_OUTPOS_TO_PULSE[i] * rang_value_[i] * M_PI / 180.0 - cur_pulse[i];
     if (std::abs(pulse_offset[i] / ARM_COEFF_OUTPOS_TO_PULSE[i]) > OFFSET_LIMIT[i])
     {
-      ROS_ERROR("Rang value differs greatly from encoder value(J%1d).", i + 1);
+      RCLCPP_ERROR(rclcpp::get_logger("driver_logger"), "Rang value differs greatly from encoder value(J%1d).", i + 1);
       failed_process();
       return true;
     }
@@ -741,13 +789,13 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
   }
   catch (std::exception& e)
   {
-    ROS_ERROR("Failed to save the CALSET data.");
+    RCLCPP_ERROR(rclcpp::get_logger("driver_logger"), "Failed to save the CALSET data.");
     failed_process();
     return true;
   }
 
   setDeviationParameters(POSITION_DEVIATION_PARAMS);
-  ROS_INFO("Success to save the CALSET data.");
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "Success to save the CALSET data.");
   // Output the CALSET data message.
   std::string pulse_offset_message;
   pulse_offset_message = "Pulse offset is [";
@@ -760,11 +808,11 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
     }
   }
   pulse_offset_message += "].";
-  ROS_INFO_STREAM(pulse_offset_message);
+  RCLCPP_INFO_STREAM(rclcpp::get_logger("driver_logger"), pulse_offset_message);
 
   // Move to the valid pose of Moveit.
   motor(true);
-  ros::Duration(process_wait_time).sleep();  // Wait for starting.
+  rate.sleep();  // Wait for starting.
   set_start_move_param();
   for (int i = 0; i < CONTROL_JOINT_MAX; i++)
   {
@@ -772,9 +820,9 @@ bool DensoCobottaDriver::execCalsetSv(ExecCalset::Request& /* req */, ExecCalset
   }
   if (!sineMove(move_param))
   {
-    ROS_WARN("Failed to move home pose.");
+    RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Failed to move home pose.");
   }
-  ROS_INFO("Success to move home pose.");
+  RCLCPP_INFO(rclcpp::get_logger("driver_logger"), "Success to move home pose.");
   return true;
 }
 
@@ -800,7 +848,7 @@ bool DensoCobottaDriver::setDeviationParameters(const std::array<uint16_t, JOINT
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     success = false;
   }
   return success;
@@ -823,12 +871,12 @@ bool DensoCobottaDriver::recvPulse(long arm_no, std::array<int32_t, JOINT_MAX>& 
   }
   catch (const CobottaException& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return false;
   }
 
@@ -857,7 +905,7 @@ bool DensoCobottaDriver::sineMove(const MoveParam& move_param)
     bool is_running = cobotta_->getMotor()->isRunning();
     if (!is_running)
     {
-      ROS_WARN("Motor is not running.");
+      RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Motor is not running.");
     }
     return is_running;
   };
@@ -967,18 +1015,20 @@ bool DensoCobottaDriver::sendServoUpdateData(const SRV_COMM_SEND& send_data)
     {
       // The current number of commands in buffer is 11.
       // To avoid buffer overflow, sleep 8 msec
-      ros::Duration(cobotta_common::getPeriod()).sleep();
+      rclcpp::Rate rate3(cobotta_common::getPeriodStd());
+      rate3.sleep();
     }
     else if (info.result == 0x84400502)
     {
       // buffer full
-      ROS_WARN("Command buffer overflow...");
-      ros::Duration(cobotta_common::getPeriod() * 2).sleep();
+      RCLCPP_WARN(rclcpp::get_logger("driver_logger"), "Command buffer overflow...");
+      rclcpp::Rate rate3(cobotta_common::getPeriodStd() * 2);
+      rate3.sleep();
     }
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
     return false;
   }
   return true;
@@ -990,9 +1040,10 @@ bool DensoCobottaDriver::sendServoUpdateData(const SRV_COMM_SEND& send_data)
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::clearErrorSv(ClearError::Request& /* req */, ClearError::Response& res)
+bool DensoCobottaDriver::clearErrorSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ClearError::Request> req,
+				      std::shared_ptr<denso_cobotta_interfaces::srv::ClearError::Response> res)
 {
-  res.success = true;
+  res->success = true;
   try
   {
     if (cobotta_->getMotor()->isRunning())
@@ -1004,12 +1055,12 @@ bool DensoCobottaDriver::clearErrorSv(ClearError::Request& /* req */, ClearError
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -1021,9 +1072,10 @@ bool DensoCobottaDriver::clearErrorSv(ClearError::Request& /* req */, ClearError
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::clearRobotErrorSv(ClearError::Request& /* req */, ClearError::Response& res)
+bool DensoCobottaDriver::clearRobotErrorSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ClearRobotError::Request> req,
+					   std::shared_ptr<denso_cobotta_interfaces::srv::ClearRobotError::Response> res)
 {
-  res.success = true;
+  res->success = true;
   try
   {
     cobotta_->getDriver()->clearError();
@@ -1031,12 +1083,12 @@ bool DensoCobottaDriver::clearRobotErrorSv(ClearError::Request& /* req */, Clear
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -1048,9 +1100,10 @@ bool DensoCobottaDriver::clearRobotErrorSv(ClearError::Request& /* req */, Clear
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::clearSafeStateSv(ClearError::Request& /* req */, ClearError::Response& res)
+bool DensoCobottaDriver::clearSafeStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ClearSafeState::Request> req,
+					  std::shared_ptr<denso_cobotta_interfaces::srv::ClearSafeState::Response> res)
 {
-  res.success = true;
+  res->success = true;
   try
   {
     cobotta_->getSafetyMcu()->moveToNormal();
@@ -1058,12 +1111,12 @@ bool DensoCobottaDriver::clearSafeStateSv(ClearError::Request& /* req */, ClearE
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -1075,23 +1128,24 @@ bool DensoCobottaDriver::clearSafeStateSv(ClearError::Request& /* req */, ClearE
  * @param res true:success false:failure
  * @return
  */
-bool DensoCobottaDriver::setLedStateSv(SetLEDState::Request& req, SetLEDState::Response& res)
+bool DensoCobottaDriver::setLedStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::SetLEDState::Request> req,
+				       std::shared_ptr<denso_cobotta_interfaces::srv::SetLEDState::Response> res)
 {
-  res.success = true;
+  res->success = true;
 
   try
   {
-    res.success = cobotta_->getLed()->change(req.blink_rate, req.red, req.green, req.blue);
+    res->success = cobotta_->getLed()->change(req->blink_rate, req->red, req->green, req->blue);
   }
   catch (const CobottaException& e)
   {
     Message::putRosConsole(nullptr, e);
-    res.success = false;
+    res->success = false;
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
-    res.success = false;
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
+    res->success = false;
   }
 
   return true;
@@ -1103,7 +1157,7 @@ bool DensoCobottaDriver::setLedStateSv(SetLEDState::Request& req, SetLEDState::R
  * @param res true:success false:failure
  * @return
  */
-void DensoCobottaDriver::miniIoOutputCallback(const std_msgs::UInt16::ConstPtr& msg)
+void DensoCobottaDriver::miniIoOutputCallback(const std_msgs::msg::UInt16::SharedPtr msg)
 {
   try
   {
@@ -1115,7 +1169,7 @@ void DensoCobottaDriver::miniIoOutputCallback(const std_msgs::UInt16::ConstPtr& 
   }
   catch (const std::exception& e)
   {
-    ROS_ERROR_STREAM(e.what());
+    RCLCPP_ERROR_STREAM(rclcpp::get_logger("driver_logger"), e.what());
   }
 }
 

@@ -10,8 +10,8 @@
 
   <!-- Verbose Mode Option -->
   <arg name="info" default="$(arg debug)" />
-  <arg unless="$(arg info)" name="command_args" value="" />
-  <arg     if="$(arg info)" name="command_args" value="--debug" />
+  <let unless="$(arg info)" var="command_args" value="" />
+  <let if="$(arg info)" var="command_args" value="--debug" />
 
   <!-- move_group settings -->
   <arg name="allow_trajectory_execution" default="true"/>
@@ -20,26 +20,35 @@
   <arg name="jiggle_fraction" default="0.05" />
   <arg name="publish_monitored_planning_scene" default="true"/>
 
-  <!-- Planning Functionality -->
-  <include ns="move_group" file="$(find denso_cobotta_moveit_config)/launch/planning_pipeline.launch.xml">
-    <arg name="pipeline" value="ompl" />
-  </include>
+  <group>
+    <push-ros-namespace namespace="move_group"/>
+    <!-- Planning Functionality -->
+    <include file="$(find denso_cobotta_moveit_config)/launch/planning_pipeline.launch.xml">
+      <arg name="pipeline" value="ompl" />
+    </include>
+    <group>
 
-  <!-- Trajectory Execution Functionality -->
-  <include ns="move_group" file="$(find denso_cobotta_moveit_config)/launch/trajectory_execution.launch.xml" if="$(arg allow_trajectory_execution)">
-    <arg name="moveit_manage_controllers" value="true" />
-    <arg name="moveit_controller_manager" value="cobotta" unless="$(arg fake_execution)"/>
-    <arg name="moveit_controller_manager" value="fake" if="$(arg fake_execution)"/>
-    <arg name="gripper_type" value="$(arg gripper_type)"/>
-  </include>
+  <group>
+    <push-ros-namespace namespace="move_group"/>
+    <!-- Trajectory Execution Functionality -->
+    <include file="$(find denso_cobotta_moveit_config)/launch/trajectory_execution.launch.xml" if="$(arg allow_trajectory_execution)">
+      <let var="moveit_manage_controllers" value="true" />
+      <let var="moveit_controller_manager" value="cobotta" unless="$(arg fake_execution)"/>
+      <let var="moveit_controller_manager" value="fake" if="$(arg fake_execution)"/>
+      <let var="gripper_type" value="$(arg gripper_type)"/>
+    </include>
+  </group>
 
-  <!-- Sensors Functionality -->
-  <include ns="move_group" file="$(find denso_cobotta_moveit_config)/launch/sensor_manager.launch.xml" if="$(arg allow_trajectory_execution)">
-    <arg name="moveit_sensor_manager" value="cobotta" />
-  </include>
+  <group>
+    <push-ros-namespace namespace="move_group"/>
+    <!-- Sensors Functionality -->
+    <include file="$(find denso_cobotta_moveit_config)/launch/sensor_manager.launch.xml" if="$(arg allow_trajectory_execution)">
+      <arg name="moveit_sensor_manager" value="cobotta" />
+    </include>
+  </group>
 
   <!-- Start the actual move_group node/action server -->
-  <node name="move_group" launch-prefix="$(arg launch_prefix)" pkg="moveit_ros_move_group" type="move_group" respawn="false" output="screen" 
+  <node name="move_group" launch-prefix="$(arg launch_prefix)" pkg="moveit_ros_move_group" exec="move_group" output="screen" 
 	args="joint_states:=/cobotta/joint_states $(arg command_args)">
     <!-- Set the display variable, in case OpenGL code is used internally -->
     <env name="DISPLAY" value="$(optenv DISPLAY :0)" />
@@ -56,7 +65,7 @@
   </node>
 
   <!-- Run the joint_state_publisher for listening joint_state topic. -->
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+  <node name="joint_state_publisher" pkg="joint_state_publisher" exec="joint_state_publisher">
     <param name="publish_frequency" type="double" value="125.0" />
     <rosparam param="source_list">[/cobotta/joint_states]</rosparam>
   </node>

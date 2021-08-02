@@ -5,6 +5,8 @@
 
   <arg name="pipeline" default="ompl" />
 
-  <include file="$(find denso_cobotta_moveit_config)/launch/$(arg pipeline)_planning_pipeline.launch.xml" />
+  <group>
+    <include file="$(find denso_cobotta_moveit_config)/launch/$(arg pipeline)_planning_pipeline.launch.xml" />
+  </group>
 
 </launch>

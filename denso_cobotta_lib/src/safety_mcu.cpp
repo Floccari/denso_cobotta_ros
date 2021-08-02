@@ -18,7 +18,9 @@
 #include <cerrno>
 #include <sys/ioctl.h>
 
-#include <ros/ros.h>
+#include <cstring>
+
+#include <rclcpp/rclcpp.hpp>
 
 #include "denso_cobotta_lib/cobotta_common.h"
 #include "denso_cobotta_lib/safety_mcu.h"
@@ -163,7 +165,7 @@ bool denso_cobotta_lib::cobotta::SafetyMcu::canMoveState()
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void SafetyMcu::moveToStandby() throw(CobottaException, std::runtime_error)
+void SafetyMcu::moveToStandby()
 {
   /* check */
   if (!this->canMoveState())
@@ -179,13 +181,14 @@ void SafetyMcu::moveToStandby() throw(CobottaException, std::runtime_error)
     throw CobottaException(0x8340005A);
   }
 
-  ROS_INFO("%s: Being in a standby...", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("safety_mcu_logger"), "%s: Being in a standby...", TAG);
   /* waiting for zero of state queue */
   if (this->getStateQueue())
   {
     while (this->getStateQueue())
     {
-      ros::Duration(cobotta_common::getPeriod()).sleep();
+      rclcpp::Rate rate(cobotta_common::getPeriodStd());
+      rate.sleep();
     }
   }
 
@@ -193,11 +196,13 @@ void SafetyMcu::moveToStandby() throw(CobottaException, std::runtime_error)
   if (this->isError() || this->isFatalError())
   {
     /* moving time: 100ms */
-    ros::Duration(0.1).sleep();
+    rclcpp::Rate rate(std::chrono::milliseconds(100));
+    rate.sleep();
   }
   this->writeHwState(this->getParent()->getFd(), SafetyMcuCommand::StandBy);
   /* moving time: 500ms */
-  ros::Duration(0.5).sleep();
+  rclcpp::Rate rate(std::chrono::milliseconds(500));
+  rate.sleep();
   /* sync */
   while (this->getState() != SafetyMcuState::StandBy)
   {
@@ -206,9 +211,10 @@ void SafetyMcu::moveToStandby() throw(CobottaException, std::runtime_error)
     if (this->isFatalError())
       throw CobottaException(0x854000F0); /* Fatal error occurred. */
 
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+    rclcpp::Rate rate(cobotta_common::getPeriodStd());
+    rate.sleep();
   }
-  ROS_INFO("%s: ...It has been in a standby state.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("safety_mcu_logger"), "%s: ...It has been in a standby state.", TAG);
 }
 
 /**
@@ -217,7 +223,7 @@ void SafetyMcu::moveToStandby() throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void SafetyMcu::moveToNormal() throw(CobottaException, std::runtime_error)
+void SafetyMcu::moveToNormal()
 {
   /* check */
   if (!this->canMoveState())
@@ -236,13 +242,15 @@ void SafetyMcu::moveToNormal() throw(CobottaException, std::runtime_error)
     this->moveToStandby();
   }
   /* standby -> normal */
-  ROS_INFO("%s: Being in a normal...", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("safety_mcu_logger"), "%s: Being in a normal...", TAG);
   /* moving time: 500ms */
-  ros::Duration(0.5).sleep();
+  rclcpp::Rate rate(std::chrono::milliseconds(500));
+  rate.sleep();
   /* move */
   this->writeHwState(this->getParent()->getFd(), SafetyMcuCommand::Normal);
   /* moving time: 24ms */
-  ros::Duration(0.024).sleep();
+  rclcpp::Rate rate2(std::chrono::milliseconds(24));
+  rate2.sleep();
   /* sync */
   while (this->getState() != SafetyMcuState::Normal)
   {
@@ -251,9 +259,10 @@ void SafetyMcu::moveToNormal() throw(CobottaException, std::runtime_error)
     if (this->isFatalError() || this->isError())
       throw CobottaException(0x83201F83); /* Operation failed */
 
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+      rclcpp::Rate rate(cobotta_common::getPeriodStd());
+      rate.sleep();
   }
-  ROS_INFO("%s: ...It has been in a normal state.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("safety_mcu_logger"), "%s: ...It has been in a normal state.", TAG);
 }
 
 /**
@@ -262,16 +271,18 @@ void SafetyMcu::moveToNormal() throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void SafetyMcu::forceMoveToStandby() throw(CobottaException, std::runtime_error)
+void SafetyMcu::forceMoveToStandby()
 {
-  ROS_INFO("%s: To clear watchdog-timer error...", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("safety_mcu_logger"), "%s: To clear watchdog-timer error...", TAG);
 
   /* moving time: 100ms */
-  ros::Duration(0.1).sleep();
+  rclcpp::Rate rate(std::chrono::milliseconds(100));
+  rate.sleep();
 
   this->writeHwState(this->getParent()->getFd(), SafetyMcuCommand::StandBy);
   /* moving time: 500ms */
-  ros::Duration(0.5).sleep();
+  rclcpp::Rate rate2(std::chrono::milliseconds(500));
+  rate2.sleep();
   /* sync */
   while (this->getState() != SafetyMcuState::StandBy)
   {
@@ -280,9 +291,10 @@ void SafetyMcu::forceMoveToStandby() throw(CobottaException, std::runtime_error)
     if (this->isFatalError())
       throw CobottaException(0x854000F0); /* Fatal error occurred. */
 
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+      rclcpp::Rate rate(cobotta_common::getPeriodStd());
+      rate.sleep();
   }
-  ROS_INFO("%s: ...Done.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("safety_mcu_logger"), "%s: ...Done.", TAG);
 }
 
 /**
@@ -291,7 +303,7 @@ void SafetyMcu::forceMoveToStandby() throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-struct StateCode SafetyMcu::dequeue() throw(CobottaException, std::runtime_error)
+struct StateCode SafetyMcu::dequeue()
 {
   return this->readHwQueue(this->getParent()->getFd());
 }
@@ -303,7 +315,7 @@ struct StateCode SafetyMcu::dequeue() throw(CobottaException, std::runtime_error
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void SafetyMcu::writeHwState(const int fd, const enum SafetyMcuCommand command) throw(CobottaException, std::runtime_error)
+void SafetyMcu::writeHwState(const int fd, const enum SafetyMcuCommand command)
 {
   int ret;
   IOCTL_DATA_SAFETY_SEND dat;
@@ -314,11 +326,11 @@ void SafetyMcu::writeHwState(const int fd, const enum SafetyMcuCommand command) 
   dat.code = (uint32_t)command;
   ret = ioctl(fd, COBOTTA_IOCTL_SAFETY_SEND, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_SAFETY_SEND ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("safety_mcu_logger"), "%s: COBOTTA_IOCTL_SAFETY_SEND ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_SAFETY_SEND): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("safety_mcu_logger"), "%s: ioctl(COBOTTA_IOCTL_SAFETY_SEND): %s",
               TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {
@@ -335,7 +347,7 @@ void SafetyMcu::writeHwState(const int fd, const enum SafetyMcuCommand command) 
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-struct StateCode SafetyMcu::readHwQueue(const int fd) throw(CobottaException, std::runtime_error)
+struct StateCode SafetyMcu::readHwQueue(const int fd)
 {
   int ret;
   IOCTL_DATA_SAFETY_CHECKSTATE dat;
@@ -345,11 +357,11 @@ struct StateCode SafetyMcu::readHwQueue(const int fd) throw(CobottaException, st
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_SAFETY_CHECKSTATE, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_SAFETY_CHECKSTATE ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("safety_mcu_logger"), "%s: COBOTTA_IOCTL_SAFETY_CHECKSTATE ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_SAFETY_CHECKSTATE): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("safety_mcu_logger"), "%s: ioctl(COBOTTA_IOCTL_SAFETY_CHECKSTATE): %s",
               TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {

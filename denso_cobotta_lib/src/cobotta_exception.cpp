@@ -18,7 +18,7 @@
 
 #include <sstream>
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include "denso_cobotta_lib/cobotta_exception.h"
 

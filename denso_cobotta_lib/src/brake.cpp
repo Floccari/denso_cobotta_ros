@@ -17,7 +17,9 @@
  */
 #include <sys/ioctl.h>
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
+
+#include <cstring>
 
 #include "denso_cobotta_lib/cobotta_common.h"
 #include "denso_cobotta_lib/cobotta_ioctl.h"
@@ -149,7 +151,7 @@ bool Brake::canChange(void) const
  * @exception CobottaException
  * @exception InvalidArgumentException
  */
-void Brake::change(const int arm_no, const std::array<int, JOINT_MAX>& state) throw(std::invalid_argument,CobottaException)
+void Brake::change(const int arm_no, const std::array<int, JOINT_MAX>& state)
 {
   if(arm_no < 0 || arm_no > ARM_MAX)
   {
@@ -163,7 +165,7 @@ void Brake::change(const int arm_no, const std::array<int, JOINT_MAX>& state) th
     throw CobottaException(0x0F20FFFF);
   }
 
-  ROS_INFO("Chaging...");
+  RCLCPP_INFO(rclcpp::get_logger("brake_logger"), "Chaging...");
   this->writeHw(this->getParent()->getFd(), arm_no, state);
 
   while(this->state_set_[arm_no] != state){
@@ -175,8 +177,9 @@ void Brake::change(const int arm_no, const std::array<int, JOINT_MAX>& state) th
     if (this->getParent()->getMotor()->isRunning())
       throw CobottaException(0x83201F83); /* Operation failed */
 
-    ros::Duration(cobotta_common::getPeriod()).sleep();
-    ROS_INFO("...Change of brake has done.");
+    rclcpp::Rate rate(cobotta_common::getPeriodStd());
+    rate.sleep();
+    RCLCPP_INFO(rclcpp::get_logger("brake_logger"), "...Change of brake has done.");
   }
 }
 
@@ -184,7 +187,7 @@ void Brake::change(const int arm_no, const std::array<int, JOINT_MAX>& state) th
  * [sync] Release all brakes
  * @param[in] arm_no Arm number
  */
-void Brake::releaseAll(const int arm_no) throw(std::invalid_argument)
+void Brake::releaseAll(const int arm_no)
 {
   std::array<int, JOINT_MAX> state;
   for(int i = 0; i < JOINT_MAX; i++){
@@ -197,7 +200,7 @@ void Brake::releaseAll(const int arm_no) throw(std::invalid_argument)
 /**
  * [sync] Release all brakes
  */
-void Brake::releaseAll(void) throw(std::invalid_argument)
+void Brake::releaseAll(void)
 {
   std::array<int, JOINT_MAX> state;
   for(int arm_no = 0; arm_no < ARM_MAX; arm_no++){
@@ -209,7 +212,7 @@ void Brake::releaseAll(void) throw(std::invalid_argument)
  * [sync] Lock all brakes
  * @param[in] arm_no Arm number
  */
-void Brake::lockAll(const int arm_no) throw(std::invalid_argument)
+void Brake::lockAll(const int arm_no)
 {
   std::array<int, JOINT_MAX> state;
   for(int i = 0; i < JOINT_MAX; i++){
@@ -222,7 +225,7 @@ void Brake::lockAll(const int arm_no) throw(std::invalid_argument)
 /**
  * [sync] Lock all brakes
  */
-void Brake::lockAll(void) throw(std::invalid_argument)
+void Brake::lockAll(void)
 {
   std::array<int, JOINT_MAX> state;
   for(int arm_no = 0; arm_no < ARM_MAX; arm_no++){
@@ -245,7 +248,7 @@ bool Brake::equal(std::array<int, JOINT_MAX> array, std::array<int, JOINT_MAX> a
  * @param arm_no arm no
  * @return array of brake state
  */
-std::array<int, JOINT_MAX> Brake::getArmState(int arm_no) throw(std::invalid_argument)
+std::array<int, JOINT_MAX> Brake::getArmState(int arm_no)
 {
   if(arm_no < 0 || arm_no > ARM_MAX)
   {
@@ -264,7 +267,7 @@ std::array<int, JOINT_MAX> Brake::getArmState(int arm_no) throw(std::invalid_arg
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void Brake::writeHw(int fd, const int arm_no, const std::array<int, JOINT_MAX>& state) throw(CobottaException)
+void Brake::writeHw(int fd, const int arm_no, const std::array<int, JOINT_MAX>& state)
 {
   int ret;
   IOCTL_DATA_SETBRAKE dat;
@@ -279,11 +282,11 @@ void Brake::writeHw(int fd, const int arm_no, const std::array<int, JOINT_MAX>& 
   }
   ret = ioctl(fd, COBOTTA_IOCTL_SRV_SETBRAKE, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_SRV_SETBRAKE ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("brake_logger"), "%s: COBOTTA_IOCTL_SRV_SETBRAKE ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if(ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_SRV_SETBRAKE): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("brake_logger"), "%s: ioctl(COBOTTA_IOCTL_SRV_SETBRAKE): %s",
             TAG, std::strerror(myerrno));
     if(myerrno == ECANCELED){
       throw CobottaException(dat.result);
@@ -300,7 +303,7 @@ void Brake::writeHw(int fd, const int arm_no, const std::array<int, JOINT_MAX>& 
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-std::array<int, JOINT_MAX> Brake::readHw(int fd, int arm_no) throw(CobottaException)
+std::array<int, JOINT_MAX> Brake::readHw(int fd, int arm_no)
 {
   int ret;
   IOCTL_DATA_GETBRAKE dat;
@@ -312,11 +315,11 @@ std::array<int, JOINT_MAX> Brake::readHw(int fd, int arm_no) throw(CobottaExcept
   dat.arm_no = arm_no;
   ret = ioctl(fd, COBOTTA_IOCTL_SRV_GETBRAKE, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_SRV_GETBRAKE ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("brake_logger"), "%s: COBOTTA_IOCTL_SRV_GETBRAKE ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if(ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_GETBRAKE): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("brake_logger"), "%s: ioctl(COBOTTA_IOCTL_GETBRAKE): %s",
             TAG, std::strerror(myerrno));
     if(myerrno == ECANCELED){
       throw CobottaException(dat.result);

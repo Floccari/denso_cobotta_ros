@@ -19,7 +19,9 @@
 #include <cerrno>
 #include <sys/ioctl.h>
 
-#include <ros/ros.h>
+#include <cstring>
+
+#include <rclcpp/rclcpp.hpp>
 
 #include "denso_cobotta_lib/cobotta_common.h"
 #include "denso_cobotta_lib/cobotta_ioctl.h"
@@ -51,7 +53,7 @@ Led::Led(std::shared_ptr<Cobotta> parent)
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void Led::update() throw(CobottaException, std::runtime_error)
+void Led::update()
 {
   if (!LED_FUNCTIONAL_SAFETY)
     return;
@@ -134,7 +136,7 @@ enum LedColorTable Led::getColorOfState()
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-bool Led::change(const uint32_t color) throw(CobottaException, std::runtime_error)
+bool Led::change(const uint32_t color)
 {
   if (!LED_FUNCTIONAL_SAFETY) {
     this->forceChange(color);
@@ -154,7 +156,7 @@ bool Led::change(const uint32_t color) throw(CobottaException, std::runtime_erro
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void Led::forceChange(const uint32_t color) throw(CobottaException, std::runtime_error)
+void Led::forceChange(const uint32_t color)
 {
   std::shared_ptr<Cobotta> cb = this->getParent();
   this->writeHw(cb->getFd(), color);
@@ -172,7 +174,7 @@ void Led::forceChange(const uint32_t color) throw(CobottaException, std::runtime
  * @exception RuntimeError An other error
  */
 bool Led::change(const uint8_t blink, const uint8_t red, const uint8_t green,
-        const uint8_t blue) throw(CobottaException, std::runtime_error)
+        const uint8_t blue)
 {
   uint32_t color = Led::toUint32(LedColor{blink, red, green, blue});
   return this->change(color);
@@ -188,7 +190,7 @@ bool Led::change(const uint8_t blink, const uint8_t red, const uint8_t green,
  * @exception RuntimeError An other error
  */
 void Led::forceChange(const uint8_t blink, const uint8_t red, const uint8_t green,
-        const uint8_t blue) throw(CobottaException, std::runtime_error)
+        const uint8_t blue)
 {
   this->forceChange(this->toUint32(LedColor{blink, red, green, blue}));
 }
@@ -200,7 +202,7 @@ void Led::forceChange(const uint8_t blink, const uint8_t red, const uint8_t gree
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-bool Led::change(const struct LedColor color) throw(CobottaException, std::runtime_error)
+bool Led::change(const struct LedColor color)
 {
   return this->change(this->toUint32(color));
 }
@@ -211,7 +213,7 @@ bool Led::change(const struct LedColor color) throw(CobottaException, std::runti
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void Led::forceChange(const struct LedColor color) throw(CobottaException, std::runtime_error)
+void Led::forceChange(const struct LedColor color)
 {
   this->forceChange(this->toUint32(color));
 }
@@ -223,7 +225,7 @@ void Led::forceChange(const struct LedColor color) throw(CobottaException, std::
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-bool Led::change(const enum LedColorTable color) throw (CobottaException, std::runtime_error)
+bool Led::change(const enum LedColorTable color)
 {
   return this->change((uint32_t)color);
 }
@@ -233,7 +235,7 @@ bool Led::change(const enum LedColorTable color) throw (CobottaException, std::r
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void Led::forceChange(const enum LedColorTable color) throw (CobottaException, std::runtime_error)
+void Led::forceChange(const enum LedColorTable color)
 {
   return this->forceChange((uint32_t)color);
 }
@@ -244,7 +246,7 @@ void Led::forceChange(const enum LedColorTable color) throw (CobottaException, s
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-uint32_t Led::receiveColor(void) throw(CobottaException, std::runtime_error)
+uint32_t Led::receiveColor(void)
 {
   std::shared_ptr<Cobotta> cb = this->getParent();
   return this->readHw(cb->getFd());
@@ -305,7 +307,7 @@ void Led::setLastColor(uint32_t last_color)
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void Led::writeHw(const int fd, const uint32_t color) throw(CobottaException, std::runtime_error)
+void Led::writeHw(const int fd, const uint32_t color)
 {
   int ret;
   IOCTL_DATA_PUTSTATE dat;
@@ -317,11 +319,11 @@ void Led::writeHw(const int fd, const uint32_t color) throw(CobottaException, st
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_SRV_PUTSTATE, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_SRV_PUTSTATE, ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("led_logger"), "%s: COBOTTA_IOCTL_SRV_PUTSTATE, ret=%d errno=%d result=%lX",
             Led::TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_SRV_PUTSTATE): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("led_logger"), "%s: ioctl(COBOTTA_IOCTL_SRV_PUTSTATE): %s",
               Led::TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {
@@ -338,7 +340,7 @@ void Led::writeHw(const int fd, const uint32_t color) throw(CobottaException, st
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-uint32_t Led::readHw(const int fd) throw(CobottaException, std::runtime_error)
+uint32_t Led::readHw(const int fd)
 {
   int ret;
   IOCTL_DATA_GETSTATE dat;
@@ -349,11 +351,11 @@ uint32_t Led::readHw(const int fd) throw(CobottaException, std::runtime_error)
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_SRV_GETSTATE, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_SRV_GETSTATE ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("led_logger"), "%s: COBOTTA_IOCTL_SRV_GETSTATE ret=%d errno=%d result=%lX",
             Led::TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_SRV_GETSTATE): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("led_logger"), "%s: ioctl(COBOTTA_IOCTL_SRV_GETSTATE): %s",
               TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {

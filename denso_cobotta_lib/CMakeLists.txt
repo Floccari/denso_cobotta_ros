@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(denso_cobotta_lib)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -7,9 +7,8 @@ add_compile_options(-std=c++14)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -100,12 +99,11 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES denso_cobotta_lib
-  CATKIN_DEPENDS roscpp
-#  DEPENDS system_lib
-)
+
+ament_export_include_directories(include)
+ament_export_libraries(denso_cobotta_lib)
+ament_export_dependencies(rclcpp)
+ament_export_targets(denso_cobotta_lib HAS_LIBRARY_TARGET)
 
 ###########
 ## Build ##
@@ -134,6 +132,8 @@ include_directories(
   src/gripper.cpp
 #     src/${PROJECT_NAME}/denso_cobotta_lib.cpp
  )
+
+ament_target_dependencies(${PROJECT_NAME} rclcpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -181,19 +181,21 @@ include_directories(
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
 
-## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+# Mark cpp header files for installation
+ install(DIRECTORY include/${PROJECT_NAME}/
+   DESTINATION include/${PROJECT_NAME}
+   FILES_MATCHING PATTERN "*.h"
+   PATTERN ".svn" EXCLUDE
+ )
 
-## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+# Mark other files for installation (e.g. launch and bag files, etc.)
+ install(TARGETS denso_cobotta_lib
+   EXPORT denso_cobotta_lib
+   LIBRARY DESTINATION lib
+   ARCHIVE DESTINATION lib
+   RUNTIME DESTINATION bin
+   INCLUDES DESTINATION include
+ )
 
 #############
 ## Testing ##
@@ -207,3 +209,5 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+ament_package()

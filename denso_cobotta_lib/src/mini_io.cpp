@@ -19,7 +19,9 @@
 #include <cerrno>
 #include <sys/ioctl.h>
 
-#include <ros/ros.h>
+#include <cstring>
+
+#include <rclcpp/rclcpp.hpp>
 
 #include "denso_cobotta_lib/cobotta_common.h"
 #include "denso_cobotta_lib/cobotta_ioctl.h"
@@ -80,12 +82,13 @@ bool MiniIo::update(const uint16_t input, uint16_t output)
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void MiniIo::sendOutputStateValue(const uint16_t state) throw(CobottaException, std::runtime_error)
+void MiniIo::sendOutputStateValue(const uint16_t state)
 {
   this->writeHwOutput(this->getParent()->getFd(), state);
   while (state != this->output_)
   {
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+    rclcpp::Rate rate(cobotta_common::getPeriodStd());
+    rate.sleep();
   }
 }
 
@@ -95,7 +98,7 @@ void MiniIo::sendOutputStateValue(const uint16_t state) throw(CobottaException, 
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-uint16_t MiniIo::receiveOutputStateValue() const throw(CobottaException, std::runtime_error)
+uint16_t MiniIo::receiveOutputStateValue() const
 {
   return this->readHwOutput(this->getParent()->getFd());
 }
@@ -106,7 +109,7 @@ uint16_t MiniIo::receiveOutputStateValue() const throw(CobottaException, std::ru
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-uint16_t MiniIo::receiveInputStateValue() const throw(CobottaException, std::runtime_error)
+uint16_t MiniIo::receiveInputStateValue() const
 {
   return this->readHwInput(this->getParent()->getFd());
 }
@@ -118,7 +121,7 @@ uint16_t MiniIo::receiveInputStateValue() const throw(CobottaException, std::run
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-void MiniIo::writeHwOutput(const int fd, uint16_t value) throw(CobottaException, std::runtime_error)
+void MiniIo::writeHwOutput(const int fd, uint16_t value)
 {
   int ret;
   IOCTL_DATA_MINI_OUTPUT dat;
@@ -130,11 +133,11 @@ void MiniIo::writeHwOutput(const int fd, uint16_t value) throw(CobottaException,
   dat.mask = 0xffff;
   ret = ioctl(fd, COBOTTA_IOCTL_MINI_OUTPUT, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_MINI_OUTPUT ret=%d errno=%d result=%lX\n",
+  RCLCPP_DEBUG(rclcpp::get_logger("mini_io_logger"), "%s: COBOTTA_IOCTL_MINI_OUTPUT ret=%d errno=%d result=%lX\n",
             TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_MINI_OUTPUT): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("mini_io_logger"), "%s: ioctl(COBOTTA_IOCTL_MINI_OUTPUT): %s",
               TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {
@@ -150,7 +153,7 @@ void MiniIo::writeHwOutput(const int fd, uint16_t value) throw(CobottaException,
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-uint16_t MiniIo::readHwOutput(const int fd) throw(CobottaException, std::runtime_error)
+uint16_t MiniIo::readHwOutput(const int fd)
 {
   int ret;
   IOCTL_DATA_MINI_OUTPUT_READ dat;
@@ -160,11 +163,11 @@ uint16_t MiniIo::readHwOutput(const int fd) throw(CobottaException, std::runtime
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_MINI_OUTPUT_READ, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_MINI_OUTPUT_READ ret=%d errno=%d result=%lX\n",
+  RCLCPP_DEBUG(rclcpp::get_logger("mini_io_logger"), "%s: COBOTTA_IOCTL_MINI_OUTPUT_READ ret=%d errno=%d result=%lX\n",
             TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_MINI_OUTPUT_READ): %s", TAG, std::strerror(myerrno));
+    RCLCPP_ERROR(rclcpp::get_logger("mini_io_logger"), "%s: ioctl(COBOTTA_IOCTL_MINI_OUTPUT_READ): %s", TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {
       throw CobottaException(dat.result);
@@ -180,7 +183,7 @@ uint16_t MiniIo::readHwOutput(const int fd) throw(CobottaException, std::runtime
  * @exception CobottaException An error defined by cobotta
  * @exception RuntimeError An other error
  */
-uint16_t MiniIo::readHwInput(const int fd) throw(CobottaException, std::runtime_error)
+uint16_t MiniIo::readHwInput(const int fd)
 {
   int ret;
   IOCTL_DATA_MINI_INPUT dat;
@@ -190,11 +193,11 @@ uint16_t MiniIo::readHwInput(const int fd) throw(CobottaException, std::runtime_
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_MINI_INPUT, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_MINI_INPUT ret=%d errno=%d result=%lX\n",
+  RCLCPP_DEBUG(rclcpp::get_logger("mini_io_logger"), "%s: COBOTTA_IOCTL_MINI_INPUT ret=%d errno=%d result=%lX\n",
             TAG, ret, myerrno, dat.result);
   if (ret)
   {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_MINI_INPUT): %s",
+    RCLCPP_ERROR(rclcpp::get_logger("mini_io_logger"), "%s: ioctl(COBOTTA_IOCTL_MINI_INPUT): %s",
               TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED)
     {

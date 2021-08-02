@@ -15,7 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include "denso_cobotta_lib/message.h"
 
 namespace denso_cobotta_lib
@@ -117,22 +117,22 @@ void Message::putRosConsole(const char* tag,
   switch (message.getErrorLevel())
   {
     case 0:
-      ROS_INFO_STREAM(ss.str());
+      RCLCPP_INFO_STREAM(rclcpp::get_logger("message_logger"), ss.str());
       break;
     case 1:
-      ROS_WARN_STREAM(ss.str());
+      RCLCPP_WARN_STREAM(rclcpp::get_logger("message_logger"), ss.str());
       break;
     case 2:
-      ROS_ERROR_STREAM(ss.str());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("message_logger"), ss.str());
       break;
     case 3:
-      ROS_ERROR_STREAM(ss.str());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("message_logger"), ss.str());
       break;
     case 4:
-      ROS_ERROR_STREAM(ss.str());
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("message_logger"), ss.str());
       break;
     default:  // Level-5
-      ROS_FATAL_STREAM(ss.str());
+      RCLCPP_FATAL_STREAM(rclcpp::get_logger("message_logger"), ss.str());
       break;
   }
 }

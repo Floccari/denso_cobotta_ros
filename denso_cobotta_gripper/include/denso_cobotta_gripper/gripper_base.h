@@ -26,9 +26,9 @@
 #include <string>
 
 // ROS
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include <actionlib/server/simple_action_server.h>
-#include <std_msgs/Bool.h>
+#include <std_msgs/msg/bool.h>
 
 // COBOTTA
 #include <sys/ioctl.h>

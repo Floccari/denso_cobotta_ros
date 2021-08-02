@@ -1,24 +1,22 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(denso_cobotta_control)
 
 add_compile_options(-std=c++11)
 
-find_package(catkin REQUIRED COMPONENTS
-  controller_manager
-  hardware_interface
-  joint_limits_interface
-  roscpp
-  std_msgs
-  transmission_interface
-  denso_cobotta_lib
-  denso_cobotta_driver
-)
+find_package(ament_cmake REQUIRED)
+find_package(controller_manager REQUIRED)
+find_package(hardware_interface REQUIRED)
+find_package(joint_limits_interface REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(transmission_interface REQUIRED)
+find_package(denso_cobotta_lib REQUIRED)
+find_package(denso_cobotta_driver)
 
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES denso_cobotta_control
-  CATKIN_DEPENDS controller_manager hardware_interface joint_limits_interface roscpp std_msgs transmission_interface denso_cobotta_lib
-)
+ament_export_include_directories(include)
+ament_export_libraries(denso_cobotta_control)
+ament_export_dependencies(controller_manager hardware_interface joint_limits_interface rclcpp std_msgs transmission_interface denso_cobotta_lib)
+
 
 ###########
 ## Build ##
@@ -50,3 +48,5 @@ install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+ament_package()

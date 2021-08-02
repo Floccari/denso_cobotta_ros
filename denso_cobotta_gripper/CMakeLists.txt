@@ -1,38 +1,36 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(denso_cobotta_gripper)
 
 add_compile_options(-std=c++14)
 
-find_package(catkin REQUIRED COMPONENTS
-  controller_manager
-  hardware_interface
-  joint_limits_interface
-  message_generation
-  roscpp
-  std_msgs
-  transmission_interface
-  actionlib
-  actionlib_msgs
-  denso_cobotta_lib
-  denso_cobotta_driver
-)
+find_package(ament_cmake REQUIRED)
+find_package(controller_manager REQUIRED)
+find_package(hardware_interface REQUIRED)
+find_package(joint_limits_interface REQUIRED)
+find_package(message_generation REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(transmission_interface REQUIRED)
+find_package(actionlib REQUIRED)
+find_package(actionlib_msgs REQUIRED)
+find_package(denso_cobotta_lib REQUIRED)
+find_package(denso_cobotta_driver REQUIRED)
+
  add_action_files(
    FILES
    GripperMove.action
    VacuumMove.action
  )
 
-generate_messages(
-   DEPENDENCIES
-   actionlib_msgs
-   std_msgs
-)
+#generate_messages(
+#   DEPENDENCIES
+#   actionlib_msgs
+#   std_msgs
+#)
 
-catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES denso_cobotta_gripper
-  CATKIN_DEPENDS controller_manager hardware_interface joint_limits_interface message_runtime roscpp std_msgs transmission_interface actionlib actionlib_msgs denso_cobotta_lib
-)
+ament_export_include_directories(include)
+ament_export_libraries(denso_cobotta_gripper)
+ament_export_dependencies(controller_manager hardware_interface joint_limits_interface message_runtime rclcpp std_msgs transmission_interface actionlib actionlib_msgs denso_cobotta_lib)
 
 ###########
 ## Build ##
@@ -61,11 +59,13 @@ target_link_libraries(${PROJECT_NAME}
 #############
 
 install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 
 install(FILES
-   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+   DESTINATION share/${PROJECT_NAME}
 )
+
+ament_package()

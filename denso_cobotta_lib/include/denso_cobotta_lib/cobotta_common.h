@@ -21,7 +21,7 @@
 
 #include <string>
 #include <array>
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 #include "denso_cobotta_lib/cobotta_ioctl.h"
 
 namespace cobotta_common
@@ -33,6 +33,7 @@ static constexpr const char* PATH_DEVFILE = "/dev/denso_cobotta";
 static constexpr const char* TEMP_PARAMS_PATH = "/tmp/cobotta_parameters.yaml";
 static constexpr uint32_t CONTROL_JOINT_MAX = 6;
 static constexpr double SERVO_PERIOD = 0.008;         //[s]
+static constexpr uint32_t SERVO_PERIOD_MILLISECONDS = SERVO_PERIOD * 1000;
 static constexpr double DRIVER_UPDATE_PERIOD = 0.01;  //[s]
 static constexpr uint32_t SRVSTATE_CB_LED = 0x00010101;
 static constexpr std::array<double, CONTROL_JOINT_MAX> ARM_COEFF_OUTPOS_TO_PULSE = { 33827.5138204596,  113081.9899244610,
@@ -47,9 +48,14 @@ static constexpr uint16_t GRIPPER_TYPE_ADDRESS = 0x0800;
 static constexpr uint16_t VACUUM_DETECT_ADDRESS = 0x0827;
 static constexpr std::array<uint16_t, JOINT_MAX + 1> POSITION_DEVIATION_PARAMS = { 16, 53, 47, 43, 40, 61, 37, 37, 10240 };
 
-static ros::Duration getPeriod()
+static rclcpp::Duration getPeriod()
 {
-  return ros::Duration(SERVO_PERIOD);
+    return rclcpp::Duration::from_seconds(SERVO_PERIOD);
+}
+
+static std::chrono::milliseconds getPeriodStd()
+{
+    return std::chrono::milliseconds(SERVO_PERIOD_MILLISECONDS);
 }
 
 static constexpr double COMMAND_CYCLE = 0.004;                  /** Update command rate: 4ms (less than 8ms) */

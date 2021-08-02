@@ -28,21 +28,21 @@
 #include <mutex>
 
 // ROS
-#include <ros/ros.h>
-#include <std_msgs/Bool.h>
-#include <std_msgs/UInt16.h>
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/bool.hpp>
+#include <std_msgs/msg/u_int16.hpp>
 #include <realtime_tools/realtime_publisher.h>
-#include "denso_cobotta_driver/GetBrakeState.h"
-#include "denso_cobotta_driver/GetMotorState.h"
-#include "denso_cobotta_driver/SetBrakeState.h"
-#include "denso_cobotta_driver/SetMotorState.h"
-#include "denso_cobotta_driver/SetLEDState.h"
-#include "denso_cobotta_driver/ClearError.h"
-#include "denso_cobotta_driver/ClearRobotError.h"
-#include "denso_cobotta_driver/ClearSafeState.h"
-#include "denso_cobotta_driver/RobotState.h"
-#include "denso_cobotta_driver/SafeState.h"
-#include "denso_cobotta_driver/ExecCalset.h"
+#include "denso_cobotta_interfaces/srv/get_brake_state.hpp"
+#include "denso_cobotta_interfaces/srv/get_motor_state.hpp"
+#include "denso_cobotta_interfaces/srv/set_brake_state.hpp"
+#include "denso_cobotta_interfaces/srv/set_motor_state.hpp"
+#include "denso_cobotta_interfaces/srv/set_led_state.hpp"
+#include "denso_cobotta_interfaces/srv/clear_error.hpp"
+#include "denso_cobotta_interfaces/srv/clear_robot_error.hpp"
+#include "denso_cobotta_interfaces/srv/clear_safe_state.hpp"
+#include "denso_cobotta_interfaces/msg/robot_state.hpp"
+#include "denso_cobotta_interfaces/msg/safe_state.hpp"
+#include "denso_cobotta_interfaces/srv/exec_calset.hpp"
 
 // COBOTTA device driver
 #include <fcntl.h>
@@ -66,26 +66,35 @@ public:
   DensoCobottaDriver();
   virtual ~DensoCobottaDriver() = default;
 
-  bool initialize(ros::NodeHandle& nh);
+  bool initialize(rclcpp::Node::SharedPtr nh);
   void start();
   void stop();
   void terminate();
   void update();
-  void publish(const bool sync, const denso_cobotta_lib::cobotta::PublishInfo pi);
+  void publish(const bool sync, denso_cobotta_lib::cobotta::PublishInfo pi);
 
   // Service callback functions.
-  bool setMotorStateSv(SetMotorState::Request& req, SetMotorState::Response& res);
-  bool getMotorStateSv(GetMotorState::Request& req, GetMotorState::Response& res);
-  bool setBrakeStateSv(SetBrakeState::Request& req, SetBrakeState::Response& res);
-  bool getBrakeStateSv(GetBrakeState::Request& req, GetBrakeState::Response& res);
-  bool execCalsetSv(ExecCalset::Request& req, ExecCalset::Response& res);
-  bool clearErrorSv(ClearError::Request& req, ClearError::Response& res);
-  bool clearRobotErrorSv(ClearError::Request& req, ClearError::Response& res);
-  bool clearSafeStateSv(ClearError::Request& req, ClearError::Response& res);
-  bool setLedStateSv(SetLEDState::Request& req, SetLEDState::Response& res);
+  bool setMotorStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::SetMotorState::Request> req,
+		       std::shared_ptr<denso_cobotta_interfaces::srv::SetMotorState::Response> res);
+  bool getMotorStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::GetMotorState::Request> req,
+		       std::shared_ptr<denso_cobotta_interfaces::srv::GetMotorState::Response> res);
+  bool setBrakeStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::SetBrakeState::Request> req,
+		       std::shared_ptr<denso_cobotta_interfaces::srv::SetBrakeState::Response> res);
+  bool getBrakeStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::GetBrakeState::Request> req,
+		       std::shared_ptr<denso_cobotta_interfaces::srv::GetBrakeState::Response> res);
+  bool execCalsetSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ExecCalset::Request> req,
+		    std::shared_ptr<denso_cobotta_interfaces::srv::ExecCalset::Response> res);
+  bool clearErrorSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ClearError::Request> req,
+		    std::shared_ptr<denso_cobotta_interfaces::srv::ClearError::Response> res);
+  bool clearRobotErrorSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ClearRobotError::Request> req,
+			 std::shared_ptr<denso_cobotta_interfaces::srv::ClearRobotError::Response> res);
+  bool clearSafeStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::ClearSafeState::Request> req,
+			std::shared_ptr<denso_cobotta_interfaces::srv::ClearSafeState::Response> res);
+  bool setLedStateSv(const std::shared_ptr<denso_cobotta_interfaces::srv::SetLEDState::Request> req,
+		     std::shared_ptr<denso_cobotta_interfaces::srv::SetLEDState::Response> res);
 
   // Subscriber callback functions.
-  void miniIoOutputCallback(const std_msgs::UInt16::ConstPtr& msg);
+  void miniIoOutputCallback(const std_msgs::msg::UInt16::SharedPtr msg);
 
 private:
   struct MoveParam
@@ -96,8 +105,8 @@ private:
     int16_t current_limit[JOINT_MAX];
     int16_t current_offset[JOINT_MAX];
   };
-  bool activateCalset(ros::NodeHandle& nh);
-  bool loadJointLimitsParams(ros::NodeHandle& nh);
+  bool activateCalset(rclcpp::Node::SharedPtr nh);
+  bool loadJointLimitsParams(rclcpp::Node::SharedPtr nh);
 
   void dequeueDriver(long arm_no, int count, bool sync = false);
   void dequeueSafetyMcu(int count, bool sync = false);
@@ -115,35 +124,35 @@ private:
   void setForceClearFlag(bool);
 
   // Service server
-  ros::ServiceServer sv_set_motor_;
-  ros::ServiceServer sv_get_motor_;
-  ros::ServiceServer sv_clear_error_;
-  ros::ServiceServer sv_clear_robot_error_;
-  ros::ServiceServer sv_clear_safe_state_;
-  ros::ServiceServer sv_set_brake_;
-  ros::ServiceServer sv_get_brake_;
-  ros::ServiceServer sv_exec_calset_;
-  ros::ServiceServer sv_set_led_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::SetMotorState>::SharedPtr sv_set_motor_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::GetMotorState>::SharedPtr sv_get_motor_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::ClearError>::SharedPtr sv_clear_error_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::ClearRobotError>::SharedPtr sv_clear_robot_error_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::ClearSafeState>::SharedPtr sv_clear_safe_state_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::SetBrakeState>::SharedPtr sv_set_brake_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::GetBrakeState>::SharedPtr sv_get_brake_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::ExecCalset>::SharedPtr sv_exec_calset_;
+  rclcpp::Service<denso_cobotta_interfaces::srv::SetLEDState>::SharedPtr sv_set_led_;
 
   // Publisher
-  ros::Publisher pub_function_button_;
-  ros::Publisher pub_plus_button_;
-  ros::Publisher pub_minus_button_;
-  ros::Publisher pub_mini_io_input_;
-  ros::Publisher pub_robot_state_;
-  ros::Publisher pub_safe_state_;
-  ros::Publisher pub_gripper_state_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_function_button_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_plus_button_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_minus_button_;
+  rclcpp::Publisher<std_msgs::msg::UInt16>::SharedPtr pub_mini_io_input_;
+  rclcpp::Publisher<denso_cobotta_interfaces::msg::RobotState>::SharedPtr pub_robot_state_;
+  rclcpp::Publisher<denso_cobotta_interfaces::msg::SafeState>::SharedPtr pub_safe_state_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr pub_gripper_state_;
 
   // Subscriber
-  ros::Subscriber sub_mini_io_output_;
+  rclcpp::Subscription<std_msgs::msg::UInt16>::SharedPtr sub_mini_io_output_;
 
   // cobotta
   std::shared_ptr<cobotta::Cobotta> cobotta_;
 
-  std_msgs::Bool function_button_state_;
-  std_msgs::Bool plus_button_state_;
-  std_msgs::Bool minus_button_state_;
-  std_msgs::UInt16 mini_io_state_;
+  std_msgs::msg::Bool function_button_state_;
+  std_msgs::msg::Bool plus_button_state_;
+  std_msgs::msg::Bool minus_button_state_;
+  std_msgs::msg::UInt16 mini_io_state_;
 
   bool force_clear_flag_ = false;
 

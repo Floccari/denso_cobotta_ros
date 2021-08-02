@@ -16,9 +16,12 @@
 
   <!-- Load the robot specific controller manager; this sets the moveit_controller_manager ROS parameter -->
   <arg name="moveit_controller_manager" default="cobotta" />
-  <include file="$(find denso_cobotta_moveit_config)/launch/$(arg moveit_controller_manager)_moveit_controller_manager.launch.xml">
-    <arg name="gripper_type" value="$(arg gripper_type)"/>
-  </include>
+
+  <group>
+    <include file="$(find denso_cobotta_moveit_config)/launch/$(arg moveit_controller_manager)_moveit_controller_manager.launch.xml">
+    <let var="gripper_type" value="$(arg gripper_type)"/>
+    </include>
+  </group>
 
   <!-- To avoid "Controller is taking too long to execute trajectory" -->
   <param name="trajectory_execution/execution_duration_monitoring" value="false" />

@@ -3,11 +3,11 @@
 
   <!-- Debug Info -->
   <arg name="debug" default="false" />
-  <arg unless="$(arg debug)" name="launch_prefix" value="" />
-  <arg     if="$(arg debug)" name="launch_prefix" value="gdb --ex run --args" />
+  <let unless="$(arg debug)" var="launch_prefix" value="" />
+  <let     if="$(arg debug)" var="launch_prefix" value="gdb --ex run --args" />
 
   <!-- Run -->
-  <node pkg="moveit_setup_assistant" type="moveit_setup_assistant" name="moveit_setup_assistant"
+  <node pkg="moveit_setup_assistant" exec="moveit_setup_assistant" name="moveit_setup_assistant"
 	args="--config_pkg=denso_cobotta_moveit_config"
 	launch-prefix="$(arg launch_prefix)"
         output="screen" />

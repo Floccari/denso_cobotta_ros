@@ -25,7 +25,7 @@
 
 #include <control_msgs/GripperCommandAction.h>
 #include <sensor_msgs/JointState.h>
-#include <std_msgs/Bool.h>
+#include <std_msgs/msg/bool.h>
 
 #include "denso_cobotta_gripper/GripperMoveAction.h"
 

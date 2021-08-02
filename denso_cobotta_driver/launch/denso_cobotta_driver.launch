@@ -1,12 +1,13 @@
 <launch>
 
   <arg name="enable_calset" default="true" />
-  <group ns="/cobotta">
+  <group>
+    <push-ros-namespace namespace="/cobotta"/>
     <rosparam param="enable_calset" subst_value="true">$(arg enable_calset)</rosparam>
     <rosparam command="load" file="$(find denso_cobotta_driver)/config/parameters.yaml" />
     <rosparam if="$(arg enable_calset)" command="load" file="$(find denso_cobotta_moveit_config)/config/joint_limits.yaml"/>
     <!-- node -->
-    <node name="denso_cobotta_driver" pkg="denso_cobotta_driver" type="denso_cobotta_driver" output="screen" required="true">
+    <node name="denso_cobotta_driver" pkg="denso_cobotta_driver" exec="denso_cobotta_driver" output="screen" required="true">
       <env name="ROSCONSOLE_FORMAT" value="[${severity}] [${time}]: ${node}: ${message}"/>
     </node>
   </group>

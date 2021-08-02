@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(denso_cobotta_gazebo)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -7,8 +7,7 @@ project(denso_cobotta_gazebo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-)
+find_package(ament_cmake REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -99,12 +98,12 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
+#catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES denso_cobotta_gazebo
 #  CATKIN_DEPENDS gazebo gazebo_plugins gazebo_ros_control
 #  DEPENDS system_lib
-)
+#)
 
 ###########
 ## Build ##
@@ -194,3 +193,5 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+ament_package()

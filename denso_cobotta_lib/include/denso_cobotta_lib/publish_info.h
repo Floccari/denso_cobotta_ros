@@ -37,9 +37,9 @@ public:
 
   bool isMinusButton() const;
   void setMinusButton(bool minus_button);
-  uint32_t getDriverQueueSize(long arm_no) const throw(std::invalid_argument);
+  uint32_t getDriverQueueSize(long arm_no);
   std::array<uint32_t, ARM_MAX> getDriverQueueSize() const;
-  void setDriverQueueSize(long arm_no, uint32_t queue_size) throw(std::invalid_argument);
+  void setDriverQueueSize(long arm_no, uint32_t queue_size);
   void setDriverQueueSize(const std::array<uint32_t, ARM_MAX>& driver_queue);
   bool isFunctionButton() const;
   void setFunctionButton(bool function_button);

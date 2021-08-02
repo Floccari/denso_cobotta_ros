@@ -21,8 +21,9 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <memory>
+#include <cstring>
 
-#include <ros/ros.h>
+#include <rclcpp/rclcpp.hpp>
 
 #include "denso_cobotta_lib/cobotta_common.h"
 #include "denso_cobotta_lib/motor.h"
@@ -152,7 +153,7 @@ bool Motor::canStart(void) const
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Motor::start(void) throw(CobottaException, std::runtime_error)
+void Motor::start(void)
 {
   /* check */
   if (this->getState() != MotorState::Off)
@@ -166,7 +167,7 @@ void Motor::start(void) throw(CobottaException, std::runtime_error)
   }
 
   /* start */
-  ROS_INFO("%s: Starting...", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("motor_logger"), "%s: Starting...", TAG);
   this->writeHwOn(this->getParent()->getFd());
   /* sync */
   while (this->getState() != MotorState::On)
@@ -177,9 +178,10 @@ void Motor::start(void) throw(CobottaException, std::runtime_error)
     if (this->getParent()->getSafetyMcu()->isSafeState())
       throw CobottaException(0x83201F83); /* Operation failed */
 
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+    rclcpp::Rate rate(cobotta_common::getPeriodStd());
+    rate.sleep();
   }
-  ROS_INFO("%s: ... Motor has started.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("motor_logger"), "%s: ... Motor has started.", TAG);
 }
 
 /**
@@ -187,7 +189,7 @@ void Motor::start(void) throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Motor::stop(void) throw(CobottaException, std::runtime_error)
+void Motor::stop(void)
 {
   /*
    * check
@@ -199,14 +201,15 @@ void Motor::stop(void) throw(CobottaException, std::runtime_error)
     return;
   }
   /* off */
-  ROS_INFO("%s: Stopping...", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("motor_logger"), "%s: Stopping...", TAG);
   this->writeHwOff(this->getParent()->getFd());
   /* sync */
   while (this->getState() == MotorState::Off)
   {
-    ros::Duration(cobotta_common::getPeriod()).sleep();
+    rclcpp::Rate rate(cobotta_common::getPeriodStd());
+    rate.sleep();
   }
-  ROS_INFO("%s: ... Motor has stopped.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("motor_logger"), "%s: ... Motor has stopped.", TAG);
 }
 
 /**
@@ -214,9 +217,9 @@ void Motor::stop(void) throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Motor::sendStop(int fd) throw(CobottaException, std::runtime_error)
+void Motor::sendStop(int fd)
 {
-  ROS_INFO("%s: Stop anyway.", TAG);
+  RCLCPP_INFO(rclcpp::get_logger("motor_logger"), "%s: Stop anyway.", TAG);
   Motor::writeHwOff(fd);
 }
 
@@ -226,7 +229,7 @@ void Motor::sendStop(int fd) throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Motor::writeHwOn(int fd) throw(CobottaException, std::runtime_error)
+void Motor::writeHwOn(int fd)
 {
   int ret;
   IOCTL_DATA_RESULT dat;
@@ -236,10 +239,10 @@ void Motor::writeHwOn(int fd) throw(CobottaException, std::runtime_error)
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_MOTOR_ON, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_MOTOR_ON ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("motor_logger"), "%s: COBOTTA_IOCTL_MOTOR_ON ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if (ret) {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_MOTOR_ON): %s", TAG, std::strerror(myerrno));
+    RCLCPP_ERROR(rclcpp::get_logger("motor_logger"), "%s: ioctl(COBOTTA_IOCTL_MOTOR_ON): %s", TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED) {
       throw CobottaException(dat.result);
     }
@@ -253,7 +256,7 @@ void Motor::writeHwOn(int fd) throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-void Motor::writeHwOff(int fd) throw(CobottaException, std::runtime_error)
+void Motor::writeHwOff(int fd)
 {
   int ret;
   IOCTL_DATA_RESULT dat;
@@ -263,10 +266,10 @@ void Motor::writeHwOff(int fd) throw(CobottaException, std::runtime_error)
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_MOTOR_OFF, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_MOTOR_OFF ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("motor_logger"), "%s: COBOTTA_IOCTL_MOTOR_OFF ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if (ret) {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_MOTOR_OFF): %s", TAG, std::strerror(myerrno));
+    RCLCPP_ERROR(rclcpp::get_logger("motor_logger"), "%s: ioctl(COBOTTA_IOCTL_MOTOR_OFF): %s", TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED) {
       throw CobottaException(dat.result);
     }
@@ -281,7 +284,7 @@ void Motor::writeHwOff(int fd) throw(CobottaException, std::runtime_error)
  * @exception CobottaException An error defined by COBOTTA
  * @exception RuntimeError An other error
  */
-int Motor::readHw(int fd) throw(CobottaException, std::runtime_error)
+int Motor::readHw(int fd)
 {
   int ret;
   IOCTL_DATA_MOTOR_STATE dat;
@@ -291,10 +294,10 @@ int Motor::readHw(int fd) throw(CobottaException, std::runtime_error)
   errno = 0;
   ret = ioctl(fd, COBOTTA_IOCTL_MOTOR_STATE, &dat);
   myerrno = errno;
-  ROS_DEBUG("%s: COBOTTA_IOCTL_MOTOR_STATE ret=%d errno=%d result=%lX",
+  RCLCPP_DEBUG(rclcpp::get_logger("motor_logger"), "%s: COBOTTA_IOCTL_MOTOR_STATE ret=%d errno=%d result=%lX",
             TAG, ret, myerrno, dat.result);
   if (ret) {
-    ROS_ERROR("%s: ioctl(COBOTTA_IOCTL_MOTOR_STATE): %s", TAG, std::strerror(myerrno));
+    RCLCPP_ERROR(rclcpp::get_logger("motor_logger"), "%s: ioctl(COBOTTA_IOCTL_MOTOR_STATE): %s", TAG, std::strerror(myerrno));
     if (myerrno == ECANCELED) {
       throw CobottaException(dat.result);
     }
