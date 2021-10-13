@@ -5,7 +5,4 @@ find_package(ament_cmake REQUIRED)
 
 ament_package()
 
-###########
-## Build ##
-###########
-#include_directories()
+install(DIRECTORY cobotta_description DESTINATION share/${PROJECT_NAME})

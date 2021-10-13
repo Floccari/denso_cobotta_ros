@@ -6,7 +6,6 @@ add_compile_options(-std=c++11)
 find_package(ament_cmake REQUIRED)
 find_package(controller_manager REQUIRED)
 find_package(hardware_interface REQUIRED)
-find_package(joint_limits_interface REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(transmission_interface REQUIRED)
@@ -15,7 +14,7 @@ find_package(denso_cobotta_driver)
 
 ament_export_include_directories(include)
 ament_export_libraries(denso_cobotta_control)
-ament_export_dependencies(controller_manager hardware_interface joint_limits_interface rclcpp std_msgs transmission_interface denso_cobotta_lib)
+ament_export_dependencies(controller_manager hardware_interface rclcpp std_msgs transmission_interface denso_cobotta_lib)
 
 
 ###########
@@ -32,12 +31,23 @@ add_executable(${PROJECT_NAME}
   src/denso_cobotta_hw.cpp
 )
 
-add_dependencies(${PROJECT_NAME} denso_cobotta_driver_generate_messages_cpp)
+#add_dependencies(${PROJECT_NAME} denso_cobotta_driver_generate_messages_cpp)
 
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   yaml-cpp
 )
+
+ament_target_dependencies(${PROJECT_NAME}
+  rclcpp
+  controller_manager
+  hardware_interface
+  transmission_interface
+  std_msgs
+  denso_cobotta_lib
+  denso_cobotta_driver
+)
+
 
 #############
 ## Install ##

@@ -6,12 +6,9 @@ add_compile_options(-std=c++14)
 find_package(ament_cmake REQUIRED)
 find_package(controller_manager REQUIRED)
 find_package(hardware_interface REQUIRED)
-find_package(joint_limits_interface REQUIRED)
-find_package(message_generation REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(transmission_interface REQUIRED)
-find_package(actionlib REQUIRED)
 find_package(actionlib_msgs REQUIRED)
 find_package(denso_cobotta_lib REQUIRED)
 find_package(denso_cobotta_driver REQUIRED)
@@ -30,7 +27,7 @@ find_package(denso_cobotta_driver REQUIRED)
 
 ament_export_include_directories(include)
 ament_export_libraries(denso_cobotta_gripper)
-ament_export_dependencies(controller_manager hardware_interface joint_limits_interface message_runtime rclcpp std_msgs transmission_interface actionlib actionlib_msgs denso_cobotta_lib)
+ament_export_dependencies(controller_manager hardware_interface message_runtime rclcpp std_msgs transmission_interface actionlib actionlib_msgs denso_cobotta_lib)
 
 ###########
 ## Build ##

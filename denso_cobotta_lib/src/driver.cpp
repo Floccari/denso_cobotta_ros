@@ -22,6 +22,7 @@
 #include "denso_cobotta_lib/driver.h"
 #include "denso_cobotta_lib/cobotta_ioctl.h"
 #include "denso_cobotta_lib/cobotta_common.h"
+#include <iomanip>
 
 namespace denso_cobotta_lib
 {

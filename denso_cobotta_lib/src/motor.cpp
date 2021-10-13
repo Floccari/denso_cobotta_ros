@@ -64,6 +64,7 @@ bool Motor::update(const enum MotorState state)
     return false;
 
   this->state_ = state;
+  return true;
 }
 
 /**
