@@ -1,0 +1,8 @@
+# Default initial positions for the cobotta arm's ros2_control fake system
+initial_positions:
+  joint_1: 0.0
+  joint_2: 0.18
+  joint_3: 0.345
+  joint_4: 0.433
+  joint_5: 0.5225
+  joint_6: 0.5645

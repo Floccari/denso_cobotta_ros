@@ -1,6 +1,7 @@
-controller_manager_ns: controller_manager
-controller_list:
-  - name: cobotta/arm_controller
+controller_names:
+  - cobotta_arm_controller
+
+cobotta_arm_controller:
     action_ns: follow_joint_trajectory
     type: FollowJointTrajectory
     default: true
