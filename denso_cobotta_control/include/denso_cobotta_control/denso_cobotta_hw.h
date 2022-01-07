@@ -31,12 +31,12 @@
 #include <std_msgs/msg/int32.hpp>
 #include <hardware_interface/joint_command_interface.h>
 #include <hardware_interface/joint_state_interface.h>
-#include <hardware_interface/robot_hw.h>
-#include <joint_limits_interface/joint_limits_interface.h>
-#include "denso_cobotta_driver/SetMotorState.h"
-#include "denso_cobotta_driver/SetLEDState.h"
-#include "denso_cobotta_driver/ClearError.h"
-#include "denso_cobotta_driver/RobotState.h"
+#include <hardware_interface/system_interface.hpp>
+//#include <joint_limits_interface/joint_limits_interface.h>
+#include "denso_cobotta_interfaces/srv/set_motor_state.h"
+#include "denso_cobotta_interfaces/srv/set_led_state.h"
+#include "denso_cobotta_interfaces/srv/clear_error.h"
+#include "denso_cobotta_interfaces/msg/robot_state.h"
 
 // COBOTTA device driver
 #include <fcntl.h>
@@ -50,7 +50,7 @@ namespace denso_cobotta_control
 {
 using namespace cobotta_common;
 
-class DensoCobottaHW : public hardware_interface::RobotHW
+class DensoCobottaHW : public hardware_interface::SystemInterface
 {
 public:
   DensoCobottaHW();

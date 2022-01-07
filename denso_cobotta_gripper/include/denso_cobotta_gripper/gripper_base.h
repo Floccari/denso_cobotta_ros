@@ -27,7 +27,7 @@
 
 // ROS
 #include <rclcpp/rclcpp.hpp>
-#include <actionlib/server/simple_action_server.h>
+//#include <actionlib/server/simple_action_server.h>
 #include <std_msgs/msg/bool.h>
 
 // COBOTTA
@@ -36,7 +36,7 @@
 #include "denso_cobotta_lib/cobotta_ioctl.h"
 #include "denso_cobotta_lib/driver.h"
 #include "denso_cobotta_lib/cobotta_exception.h"
-#include "denso_cobotta_driver/RobotState.h"
+#include "denso_cobotta_interfaces/msg/robot_state.h"
 #include "denso_cobotta_lib/cobotta_common.h"
 #include "denso_cobotta_lib/gripper.h"
 

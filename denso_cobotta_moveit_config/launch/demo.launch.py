@@ -211,8 +211,8 @@ def generate_launch_description():
             run_move_group_node,
             ros2_control_node,
             #mongodb_server_node,
-            #gazebo,
-            #spawn_entity,
+            gazebo,
+            spawn_entity,
         ]
         + load_controllers
     )

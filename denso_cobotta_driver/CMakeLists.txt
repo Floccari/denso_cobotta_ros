@@ -12,9 +12,9 @@ find_package(realtime_tools REQUIRED)
 find_package(denso_cobotta_lib)
 find_package(denso_cobotta_interfaces)
 
-ament_export_include_directories(include)
+#ament_export_include_directories(include)
 ament_export_dependencies(rclcpp std_msgs)
-ament_export_libraries(denso_cobotta_lib denso_cobotta_interfaces)
+#ament_export_libraries(denso_cobotta_lib denso_cobotta_interfaces)
 
 
 ###########

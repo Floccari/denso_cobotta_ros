@@ -16,7 +16,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 
-#include <controller_manager/controller_manager.h>
+//#include <controller_manager/controller_manager.h>
 #include "denso_cobotta_control/denso_cobotta_hw.h"
 
 int main(int argc, char** argv)

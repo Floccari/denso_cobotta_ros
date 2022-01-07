@@ -16,6 +16,7 @@
   <build_depend>actionlib_msgs</build_depend>
   <build_depend>denso_cobotta_lib</build_depend>
   <build_depend>denso_cobotta_driver</build_depend>
+  <build_depend>denso_cobotta_interfaces</build_depend>
   <build_export_depend>controller_manager</build_export_depend>
   <build_export_depend>hardware_interface</build_export_depend>
   <build_export_depend>rclcpp</build_export_depend>

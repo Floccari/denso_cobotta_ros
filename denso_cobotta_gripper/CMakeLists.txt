@@ -12,12 +12,13 @@ find_package(transmission_interface REQUIRED)
 find_package(actionlib_msgs REQUIRED)
 find_package(denso_cobotta_lib REQUIRED)
 find_package(denso_cobotta_driver REQUIRED)
+find_package(denso_cobotta_interfaces)
 
- add_action_files(
-   FILES
-   GripperMove.action
-   VacuumMove.action
- )
+# add_action_files(
+#   FILES
+#   GripperMove.action
+#   VacuumMove.action
+# )
 
 #generate_messages(
 #   DEPENDENCIES
@@ -45,11 +46,8 @@ add_executable(${PROJECT_NAME}
   src/gripper_vacuum.cpp
 )
 
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)
 
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-)
+ament_target_dependencies(${PROJECT_NAME} rclcpp denso_cobotta_lib denso_cobotta_interfaces)
 
 #############
 ## Install ##

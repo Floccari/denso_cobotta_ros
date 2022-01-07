@@ -11,6 +11,7 @@ find_package(std_msgs REQUIRED)
 find_package(transmission_interface REQUIRED)
 find_package(denso_cobotta_lib REQUIRED)
 find_package(denso_cobotta_driver)
+find_package(denso_cobotta_interfaces)
 
 ament_export_include_directories(include)
 ament_export_libraries(denso_cobotta_control)
@@ -46,6 +47,7 @@ ament_target_dependencies(${PROJECT_NAME}
   std_msgs
   denso_cobotta_lib
   denso_cobotta_driver
+  denso_cobotta_interfaces
 )
 
 
